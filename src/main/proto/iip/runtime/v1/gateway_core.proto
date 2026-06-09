@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package iip.runtime.v1;
+
+option java_package = "com.tmax.iip.common.grpc.runtime.v1";
+option java_multiple_files = true;
+
+import "iip/runtime/v1/common_message.proto";
+
+service GatewayCoreService {
+  rpc ExecuteFlow(ExecuteFlowRequest) returns (ExecuteFlowResponse);
+}
+
+message ExecuteFlowRequest {
+  string flow_id = 1;
+  RuntimeHeader header = 2;
+  RuntimePayload payload = 3;
+}
+
+message ExecuteFlowResponse {
+  int32 status_code = 1;
+  RuntimeHeader header = 2;
+  RuntimePayload payload = 3;
+  RuntimeError error = 4;
+}

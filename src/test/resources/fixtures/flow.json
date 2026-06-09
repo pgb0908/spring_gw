@@ -1,0 +1,16 @@
+{
+  "apiVersion": "iip.gateway/v1alpha1",
+  "kind": "Flow",
+  "metadata": { "name": "integration-flow" },
+  "spec": {
+    "protocol": "gRPC",
+    "upstreamTls": { "enabled": false },
+    "loadBalancing": {
+      "algorithm": "ROUND_ROBIN",
+      "targets": [
+        { "host": "10.0.2.10", "port": 9090, "flow-id": "flow-abc-123" }
+      ]
+    },
+    "timeout": { "connect": "5s", "read": "10s" }
+  }
+}

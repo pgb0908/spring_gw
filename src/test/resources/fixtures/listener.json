@@ -1,0 +1,11 @@
+{
+  "apiVersion": "iip.gateway/v1alpha1",
+  "kind": "Listener",
+  "metadata": { "name": "main-listener", "labels": { "env": "test" } },
+  "spec": {
+    "protocol": "HTTP",
+    "port": 8080,
+    "host": "0.0.0.0",
+    "connection": { "readTimeout": "10s", "writeTimeout": "10s", "maxConnections": 1000 }
+  }
+}

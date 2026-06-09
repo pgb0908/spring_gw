@@ -1,0 +1,19 @@
+{
+  "apiVersion": "iip.gateway/v1alpha1",
+  "kind": "Gateway",
+  "metadata": { "name": "main-gateway" },
+  "spec": {
+    "globalPolicy": {
+      "cors": {
+        "allowOrigins": ["https://example.com"],
+        "allowMethods": ["GET", "POST", "OPTIONS"],
+        "allowHeaders": ["Content-Type", "Authorization"],
+        "allowCredentials": true,
+        "maxAge": 3600
+      },
+      "ipFilter": { "denyList": ["192.168.1.100/32"] },
+      "rateLimit": { "requestsPerSecond": 1000, "burst": 2000 }
+    },
+    "logging": { "accessLog": { "enabled": true, "format": "JSON" } }
+  }
+}

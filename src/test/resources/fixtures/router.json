@@ -1,0 +1,15 @@
+{
+  "apiVersion": "iip.gateway/v1alpha1",
+  "kind": "Router",
+  "metadata": { "name": "api-router" },
+  "spec": {
+    "rule": {
+      "protocol": "HTTP",
+      "match": { "path": "/api/orders/**", "methods": "GET" }
+    },
+    "destinations": [
+      { "destinationRef": { "kind": "Connector", "name": "order-connector" }, "weight": 90 },
+      { "destinationRef": { "kind": "Connector", "name": "order-connector-v2" }, "weight": 10 }
+    ]
+  }
+}

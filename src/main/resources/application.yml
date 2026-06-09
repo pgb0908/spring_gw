@@ -6,15 +6,17 @@ spring:
     name: api-gateway
   cloud:
     gateway:
-      routes:
-        - id: example-service
-          uri: http://localhost:8081
-          predicates:
-            - Path=/api/example/**
-          filters:
-            - StripPrefix=2  # /api/example/foo → /foo
+      routes: []
+
+gateway:
+  mode: standalone
+  standalone:
+    config-dir: ./config
 
 management:
+  endpoint:
+    gateway:
+      enabled: true
   endpoints:
     web:
       exposure:

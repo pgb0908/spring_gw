@@ -1,0 +1,15 @@
+{
+  "apiVersion": "iip.gateway/v1alpha1",
+  "kind": "Connector",
+  "metadata": { "name": "example-connector" },
+  "spec": {
+    "protocol": "HTTP",
+    "loadBalancing": {
+      "algorithm": "ROUND_ROBIN",
+      "targets": [
+        { "host": "localhost", "port": 8081, "weight": 1 }
+      ]
+    },
+    "timeout": { "connect": "5s", "read": "10s" }
+  }
+}

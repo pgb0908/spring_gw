@@ -1,0 +1,17 @@
+{
+  "apiVersion": "iip.gateway/v1alpha1",
+  "kind": "Connector",
+  "metadata": { "name": "order-connector" },
+  "spec": {
+    "protocol": "HTTP",
+    "loadBalancing": {
+      "algorithm": "ROUND_ROBIN",
+      "targets": [
+        { "host": "10.0.1.10", "port": 8080, "weight": 1 },
+        { "host": "10.0.1.11", "port": 8080, "weight": 1 }
+      ]
+    },
+    "retry": { "retryOn": ["5xx", "connect-failure"], "numRetries": 3 },
+    "timeout": { "connect": "5s", "read": "10s" }
+  }
+}
