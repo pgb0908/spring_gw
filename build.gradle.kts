@@ -44,6 +44,7 @@ dependencies {
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("io.projectreactor:reactor-test")
     testImplementation("io.grpc:grpc-testing:${grpcVersion}")
+    implementation("com.nimbusds:nimbus-jose-jwt:9.37.3")
     testCompileOnly("org.projectlombok:lombok")
     testAnnotationProcessor("org.projectlombok:lombok")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")

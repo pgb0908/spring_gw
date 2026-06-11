@@ -56,10 +56,12 @@ public class StandaloneConfigLoader {
         List<RouterResource> routers = new ArrayList<>();
         Map<String, ConnectorResource> connectors = new HashMap<>();
         Map<String, FlowResource> flows = new HashMap<>();
+        List<PolicyResource> policies = new ArrayList<>();
 
         for (File file : files) {
             try {
-                String kind = objectMapper.readTree(file).path("kind").asText(null);
+                var tree = objectMapper.readTree(file);
+                String kind = tree.path("kind").asText(null);
                 if (kind == null) {
                     log.warn("Missing 'kind' field in {}", file.getName());
                     continue;
@@ -70,6 +72,19 @@ public class StandaloneConfigLoader {
                     case "Router"    -> routers.add(objectMapper.readValue(file, RouterResource.class));
                     case "Connector" -> { var c = objectMapper.readValue(file, ConnectorResource.class); connectors.put(c.getMetadata().getName(), c); }
                     case "Flow"      -> { var f = objectMapper.readValue(file, FlowResource.class); flows.put(f.getMetadata().getName(), f); }
+                    case "Policy"    -> {
+                        String type = tree.path("type").asText(null);
+                        if (type == null || type.isBlank()) {
+                            log.warn("Policy '{}' missing 'type' field — skipping", file.getName());
+                            continue;
+                        }
+                        var p = objectMapper.readValue(file, PolicyResource.class);
+                        if (p.getSpec().getTargetRef() == null) {
+                            log.warn("Policy '{}' missing spec.targetRef — skipping", p.getMetadata().getName());
+                            continue;
+                        }
+                        policies.add(p);
+                    }
                     default          -> log.warn("Unknown kind '{}' in {}", kind, file.getName());
                 }
                 log.debug("Loaded {} from {}", kind, file.getName());
@@ -88,6 +103,7 @@ public class StandaloneConfigLoader {
                 .routers(routers)
                 .connectors(connectors)
                 .flows(flows)
+                .policies(policies)
                 .build();
     }
 }

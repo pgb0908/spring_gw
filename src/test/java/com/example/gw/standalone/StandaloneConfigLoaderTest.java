@@ -80,6 +80,46 @@ class StandaloneConfigLoaderTest {
         assertThat(config.getConnectors()).containsKey("c1");
     }
 
+    // ── 동작 5-1: kind=Policy 파일이 LoadedConfig.policies에 포함된다 ────────
+    @Test
+    void Policy_파일을_로드해_policies_목록에_포함한다(@TempDir Path dir) throws Exception {
+        write(dir, "policy.json", """
+                {"apiVersion":"iip.gateway/v1alpha1","kind":"Policy","type":"Security","metadata":{"name":"orders-security"},
+                 "spec":{"targetRef":{"kind":"Router","name":"route-to-orders"},"order":5,"config":{"ipFilter":{"allowList":["10.0.0.0/8"]}}}}""");
+
+        var config = loader(dir.toString()).getConfig();
+
+        assertThat(config.getPolicies()).hasSize(1);
+        assertThat(config.getPolicies().get(0).getMetadata().getName()).isEqualTo("orders-security");
+        assertThat(config.getPolicies().get(0).getType()).isEqualTo("Security");
+        assertThat(config.getPolicies().get(0).getSpec().getTargetRef().getName()).isEqualTo("route-to-orders");
+        assertThat(config.getPolicies().get(0).getSpec().getOrder()).isEqualTo(5);
+    }
+
+    // ── 동작 5-2: type 필드 누락 Policy는 스킵된다 ───────────────────────────
+    @Test
+    void type_필드_없는_Policy는_스킵된다(@TempDir Path dir) throws Exception {
+        write(dir, "bad-policy.json", """
+                {"apiVersion":"iip.gateway/v1alpha1","kind":"Policy","metadata":{"name":"bad"},
+                 "spec":{"targetRef":{"kind":"Router","name":"r1"},"order":5,"config":{}}}""");
+
+        var config = loader(dir.toString()).getConfig();
+
+        assertThat(config.getPolicies()).isEmpty();
+    }
+
+    // ── 동작 5-3: targetRef 없는 Policy는 스킵된다 ───────────────────────────
+    @Test
+    void targetRef_없는_Policy는_스킵된다(@TempDir Path dir) throws Exception {
+        write(dir, "no-ref-policy.json", """
+                {"apiVersion":"iip.gateway/v1alpha1","kind":"Policy","type":"Security","metadata":{"name":"p1"},
+                 "spec":{"order":5,"config":{}}}""");
+
+        var config = loader(dir.toString()).getConfig();
+
+        assertThat(config.getPolicies()).isEmpty();
+    }
+
     // ── 동작 5: Connector와 Flow를 이름으로 인덱싱한다 ───────────────────────
     @Test
     void Connector와_Flow를_metadata_name으로_인덱싱한다(@TempDir Path dir) throws Exception {

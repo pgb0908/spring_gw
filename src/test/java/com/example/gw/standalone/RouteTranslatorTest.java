@@ -41,9 +41,9 @@ class RouteTranslatorTest {
         assertThat(routes.get(0).getUri().getScheme()).isEqualTo("https");
     }
 
-    // ── 동작 7: Flow 목적지 → h2c URI + X-Flow-Id 헤더 ───────────────────
+    // ── 동작 7: Flow 목적지 → grpc:// URI + metadata(destinationKind, flowId) ─
     @Test
-    void Flow_목적지는_h2c_URI와_X_Flow_Id_헤더로_변환된다() {
+    void Flow_목적지는_grpc_URI와_metadata로_변환된다() {
         var config = configWithFlow(
                 router("r1", "/flow/**", "POST", RouterResource.DestinationKind.Flow, "my-flow"),
                 flow("my-flow", "10.0.0.3", 9090, "flow-xyz")
@@ -51,11 +51,12 @@ class RouteTranslatorTest {
 
         var routes = translator.translate(config);
 
-        assertThat(routes.get(0).getUri().getScheme()).isEqualTo("h2c");
-        assertThat(routes.get(0).getUri().toString()).isEqualTo("h2c://10.0.0.3:9090");
-        assertThat(routes.get(0).getFilters()).hasSize(1);
-        assertThat(routes.get(0).getFilters().get(0).getName()).isEqualTo("AddRequestHeader");
-        assertThat(routes.get(0).getFilters().get(0).getArgs()).containsValue("flow-xyz");
+        assertThat(routes.get(0).getUri().getScheme()).isEqualTo("grpc");
+        assertThat(routes.get(0).getUri().toString()).isEqualTo("grpc://10.0.0.3:9090");
+        assertThat(routes.get(0).getMetadata()).containsEntry("destinationKind", "Flow");
+        assertThat(routes.get(0).getMetadata()).containsEntry("flowId", "flow-xyz");
+        assertThat(routes.get(0).getFilters())
+                .noneMatch(f -> f.getName().equals("FlowGateway"));
     }
 
     // ── 동작 8: 목적지 없는 Router는 건너뛴다 ────────────────────────────
@@ -97,6 +98,84 @@ class RouteTranslatorTest {
         assertThat(predicateNames).contains("Path", "Method");
     }
 
+    // ── 동작 10: Policy가 없는 Router는 Policy 필터 없이 변환된다 ─────────
+    @Test
+    void Policy가_없는_Router는_기존_필터만_유지된다() {
+        var config = configWith(
+                router("r1", "/api/**", "GET", RouterResource.DestinationKind.Connector, "svc"),
+                connector("svc", "HTTP", "localhost", 8080)
+        );
+
+        var route = translator.translate(config).get(0);
+
+        assertThat(route.getFilters()).isEmpty();
+    }
+
+    // ── 동작 11: Policy 1개가 order 위치에 필터로 추가된다 ───────────────
+    @Test
+    void Router에_Policy_1개가_있으면_해당_필터가_추가된다() {
+        var router = router("r1", "/api/**", "GET", RouterResource.DestinationKind.Connector, "svc");
+        var conn = connector("svc", "HTTP", "localhost", 8080);
+        var policy = policy("p1", "Security", "r1", 5);
+
+        var config = LoadedConfig.builder()
+                .listeners(List.of()).gateway(null)
+                .routers(List.of(router))
+                .connectors(Map.of("svc", conn))
+                .flows(Map.of())
+                .policies(List.of(policy))
+                .build();
+
+        var route = translator.translate(config).get(0);
+
+        assertThat(route.getFilters()).hasSize(1);
+        assertThat(route.getFilters().get(0).getName()).isEqualTo("SecurityPolicy");
+        assertThat(route.getFilters().get(0).getArgs()).containsValue("p1");
+    }
+
+    // ── 동작 12: 여러 Policy가 order 오름차순으로 정렬된다 ──────────────
+    @Test
+    void 여러_Policy가_order_오름차순으로_필터에_추가된다() {
+        var router = router("r1", "/api/**", "GET", RouterResource.DestinationKind.Connector, "svc");
+        var conn = connector("svc", "HTTP", "localhost", 8080);
+        var traffic = policy("traffic-p", "Traffic", "r1", 10);
+        var security = policy("security-p", "Security", "r1", 5);
+
+        var config = LoadedConfig.builder()
+                .listeners(List.of()).gateway(null)
+                .routers(List.of(router))
+                .connectors(Map.of("svc", conn))
+                .flows(Map.of())
+                .policies(List.of(traffic, security))
+                .build();
+
+        var route = translator.translate(config).get(0);
+
+        assertThat(route.getFilters()).hasSize(2);
+        assertThat(route.getFilters().get(0).getName()).isEqualTo("SecurityPolicy");
+        assertThat(route.getFilters().get(1).getName()).isEqualTo("TrafficPolicy");
+    }
+
+    // ── 동작 13: 미구현 Policy type은 스킵된다 ──────────────────────────
+    @Test
+    void 미구현_Policy_type은_필터에_추가되지_않는다() {
+        var router = router("r1", "/api/**", "GET", RouterResource.DestinationKind.Connector, "svc");
+        var conn = connector("svc", "HTTP", "localhost", 8080);
+        var unknown = policy("p1", "UnknownType", "r1", 5);
+
+        var config = LoadedConfig.builder()
+                .listeners(List.of()).gateway(null)
+                .routers(List.of(router))
+                .connectors(Map.of("svc", conn))
+                .flows(Map.of())
+                .policies(List.of(unknown))
+                .build();
+
+        var route = translator.translate(config).get(0);
+
+        assertThat(route.getFilters()).isEmpty();
+    }
+
     // ── 헬퍼 메서드 ────────────────────────────────────────────────────────
 
     private LoadedConfig configWith(RouterResource router, ConnectorResource connector) {
@@ -105,6 +184,7 @@ class RouteTranslatorTest {
                 .routers(List.of(router))
                 .connectors(Map.of(connector.getMetadata().getName(), connector))
                 .flows(Map.of())
+                .policies(List.of())
                 .build();
     }
 
@@ -114,6 +194,7 @@ class RouteTranslatorTest {
                 .routers(List.of(router))
                 .connectors(Map.of())
                 .flows(Map.of(flow.getMetadata().getName(), flow))
+                .policies(List.of())
                 .build();
     }
 
@@ -138,6 +219,17 @@ class RouteTranslatorTest {
         target.setPort(port);
         c.getSpec().getLoadBalancing().setTargets(List.of(target));
         return c;
+    }
+
+    private com.example.gw.model.PolicyResource policy(String name, String type, String routerName, int order) {
+        var p = new com.example.gw.model.PolicyResource();
+        p.getMetadata().setName(name);
+        p.setType(type);
+        var targetRef = new com.example.gw.model.PolicyResource.TargetRef();
+        targetRef.setName(routerName);
+        p.getSpec().setTargetRef(targetRef);
+        p.getSpec().setOrder(order);
+        return p;
     }
 
     private FlowResource flow(String name, String host, int port, String flowId) {

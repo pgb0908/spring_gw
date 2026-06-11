@@ -15,6 +15,7 @@ public class LoadedConfig {
     List<RouterResource> routers;
     Map<String, ConnectorResource> connectors;
     Map<String, FlowResource> flows;
+    List<PolicyResource> policies;
 
     public static LoadedConfig empty() {
         return LoadedConfig.builder()
@@ -23,6 +24,7 @@ public class LoadedConfig {
                 .routers(List.of())
                 .connectors(Map.of())
                 .flows(Map.of())
+                .policies(List.of())
                 .build();
     }
 }

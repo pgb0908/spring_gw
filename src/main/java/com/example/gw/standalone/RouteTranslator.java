@@ -2,6 +2,7 @@ package com.example.gw.standalone;
 
 import com.example.gw.model.ConnectorResource;
 import com.example.gw.model.FlowResource;
+import com.example.gw.model.PolicyResource;
 import com.example.gw.model.RouterResource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cloud.gateway.filter.FilterDefinition;
@@ -10,7 +11,11 @@ import org.springframework.cloud.gateway.route.RouteDefinition;
 import org.springframework.stereotype.Component;
 
 import java.net.URI;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @Component
@@ -53,7 +58,11 @@ public class RouteTranslator {
                 new PredicateDefinition("Path=" + router.getSpec().getRule().getMatch().getPath()),
                 new PredicateDefinition("Method=" + router.getSpec().getRule().getMatch().getMethods())
         ));
-        route.setFilters(resolved.filters());
+
+        List<FilterDefinition> filters = new ArrayList<>(policyFilters(router.getMetadata().getName(), config));
+        filters.addAll(resolved.filters());
+        route.setFilters(filters);
+        route.setMetadata(new HashMap<>(resolved.metadata()));
         return route;
     }
 
@@ -68,7 +77,7 @@ public class RouteTranslator {
         }
         var target = targets.get(0);
         String scheme = "HTTPS".equals(connector.getSpec().getProtocol()) ? "https" : "http";
-        return new ResolvedDestination(scheme + "://" + target.getHost() + ":" + target.getPort(), List.of());
+        return new ResolvedDestination(scheme + "://" + target.getHost() + ":" + target.getPort(), List.of(), Map.of());
     }
 
     private ResolvedDestination resolveFlow(String name, LoadedConfig config) {
@@ -81,13 +90,37 @@ public class RouteTranslator {
             return null;
         }
         var target = targets.get(0);
-        var tls = flow.getSpec().getUpstreamTls();
-        String scheme = (tls != null && tls.isEnabled()) ? "https" : "h2c";
-        List<FilterDefinition> filters = target.getFlowId() != null && !target.getFlowId().isBlank()
-                ? List.of(new FilterDefinition("AddRequestHeader=X-Flow-Id, " + target.getFlowId()))
-                : List.of();
-        return new ResolvedDestination(scheme + "://" + target.getHost() + ":" + target.getPort(), filters);
+        Map<String, Object> metadata = new HashMap<>();
+        metadata.put("destinationKind", "Flow");
+        if (target.getFlowId() != null && !target.getFlowId().isBlank()) {
+            metadata.put("flowId", target.getFlowId());
+        }
+        return new ResolvedDestination("grpc://" + target.getHost() + ":" + target.getPort(), List.of(), metadata);
     }
 
-    private record ResolvedDestination(String uri, List<FilterDefinition> filters) {}
+    private List<FilterDefinition> policyFilters(String routerName, LoadedConfig config) {
+        return config.getPolicies().stream()
+                .filter(p -> routerName.equals(p.getSpec().getTargetRef().getName()))
+                .sorted(Comparator.comparingInt(p -> p.getSpec().getOrder()))
+                .map(this::toPolicyFilterDefinition)
+                .filter(f -> f != null)
+                .toList();
+    }
+
+    private FilterDefinition toPolicyFilterDefinition(PolicyResource policy) {
+        String factoryName = switch (policy.getType()) {
+            case "Security"  -> "SecurityPolicy";
+            case "Traffic"   -> "TrafficPolicy";
+            case "Enhance"   -> "EnhancePolicy";
+            case "Transform" -> "TransformPolicy";
+            default -> {
+                log.warn("Policy type '{}' is not implemented — skipping '{}'", policy.getType(), policy.getMetadata().getName());
+                yield null;
+            }
+        };
+        if (factoryName == null) return null;
+        return new FilterDefinition(factoryName + "=" + policy.getMetadata().getName());
+    }
+
+    private record ResolvedDestination(String uri, List<FilterDefinition> filters, Map<String, Object> metadata) {}
 }
