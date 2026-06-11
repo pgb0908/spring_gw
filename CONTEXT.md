@@ -65,6 +65,20 @@ _Avoid_: Payload, Body, Message
 Flow 엔진이 반환하는 구조화된 오류. `code`, `message`, `detail`을 포함한다.
 _Avoid_: Error, GrpcError, FlowError
 
+## Policy 실행 계약
+
+**Policy**:
+Router에 부착되는 per-route 필터 설정 리소스. `spec.targetRef`로 Router를 참조하고, `spec.order` 값에 따라 오름차순으로 실행된다. top-level `type` 필드로 Security / Traffic / Enhance / Transform 네 가지를 구분한다.
+_Avoid_: Filter config, middleware, plugin
+
+**Policy type**:
+Policy 리소스의 세부 종류. `type` 필드로 표현하며 기본 실행 순서는 Security(5) → Traffic(10) → Enhance(12) → Transform(15).
+_Avoid_: policyKind, subType, category
+
+**Policy 부착 방향**:
+Policy가 Router를 참조한다 (`Policy.spec.targetRef → Router`). Router는 자신에게 붙은 Policy를 알지 못한다.
+_Avoid_: Router가 Policy를 소유한다, Router inline policy
+
 ## Flagged ambiguities
 
 - "route"는 **Router** 리소스 자체와 Spring Cloud Gateway 내부의 RouteDefinition 양쪽으로 사용될 수 있음 — 도메인 용어로는 **Router**를 사용한다.
