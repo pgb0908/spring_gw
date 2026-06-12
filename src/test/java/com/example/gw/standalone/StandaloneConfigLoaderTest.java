@@ -1,5 +1,6 @@
 package com.example.gw.standalone;
 
+import com.example.gw.policy.InMemoryPolicyRegistry;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -12,9 +13,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 class StandaloneConfigLoaderTest {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
+    private final InMemoryPolicyRegistry policyRegistry = new InMemoryPolicyRegistry();
 
     private StandaloneConfigLoader loader(String dir) {
-        return new StandaloneConfigLoader(dir, objectMapper);
+        return new StandaloneConfigLoader(dir, objectMapper, policyRegistry);
     }
 
     // ── 동작 1: 디렉토리의 모든 리소스 타입을 로드한다 ──────────────────────

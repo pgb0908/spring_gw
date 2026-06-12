@@ -116,7 +116,7 @@ class RouteTranslatorTest {
     void Router에_Policy_1개가_있으면_해당_필터가_추가된다() {
         var router = router("r1", "/api/**", "GET", RouterResource.DestinationKind.Connector, "svc");
         var conn = connector("svc", "HTTP", "localhost", 8080);
-        var policy = policy("p1", "Security", "r1", 5);
+        var policy = policy("p1", "IpFilter", "r1", 5);
 
         var config = LoadedConfig.builder()
                 .listeners(List.of()).gateway(null)
@@ -129,7 +129,7 @@ class RouteTranslatorTest {
         var route = translator.translate(config).get(0);
 
         assertThat(route.getFilters()).hasSize(1);
-        assertThat(route.getFilters().get(0).getName()).isEqualTo("SecurityPolicy");
+        assertThat(route.getFilters().get(0).getName()).isEqualTo("IpFilter");
         assertThat(route.getFilters().get(0).getArgs()).containsValue("p1");
     }
 
@@ -138,42 +138,22 @@ class RouteTranslatorTest {
     void 여러_Policy가_order_오름차순으로_필터에_추가된다() {
         var router = router("r1", "/api/**", "GET", RouterResource.DestinationKind.Connector, "svc");
         var conn = connector("svc", "HTTP", "localhost", 8080);
-        var traffic = policy("traffic-p", "Traffic", "r1", 10);
-        var security = policy("security-p", "Security", "r1", 5);
+        var jwt = policy("jwt-p", "JwtValidation", "r1", 10);
+        var ip = policy("ip-p", "IpFilter", "r1", 5);
 
         var config = LoadedConfig.builder()
                 .listeners(List.of()).gateway(null)
                 .routers(List.of(router))
                 .connectors(Map.of("svc", conn))
                 .flows(Map.of())
-                .policies(List.of(traffic, security))
+                .policies(List.of(jwt, ip))
                 .build();
 
         var route = translator.translate(config).get(0);
 
         assertThat(route.getFilters()).hasSize(2);
-        assertThat(route.getFilters().get(0).getName()).isEqualTo("SecurityPolicy");
-        assertThat(route.getFilters().get(1).getName()).isEqualTo("TrafficPolicy");
-    }
-
-    // ── 동작 13: 미구현 Policy type은 스킵된다 ──────────────────────────
-    @Test
-    void 미구현_Policy_type은_필터에_추가되지_않는다() {
-        var router = router("r1", "/api/**", "GET", RouterResource.DestinationKind.Connector, "svc");
-        var conn = connector("svc", "HTTP", "localhost", 8080);
-        var unknown = policy("p1", "UnknownType", "r1", 5);
-
-        var config = LoadedConfig.builder()
-                .listeners(List.of()).gateway(null)
-                .routers(List.of(router))
-                .connectors(Map.of("svc", conn))
-                .flows(Map.of())
-                .policies(List.of(unknown))
-                .build();
-
-        var route = translator.translate(config).get(0);
-
-        assertThat(route.getFilters()).isEmpty();
+        assertThat(route.getFilters().get(0).getName()).isEqualTo("IpFilter");
+        assertThat(route.getFilters().get(1).getName()).isEqualTo("JwtValidation");
     }
 
     // ── 헬퍼 메서드 ────────────────────────────────────────────────────────

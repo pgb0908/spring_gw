@@ -68,16 +68,20 @@ _Avoid_: Error, GrpcError, FlowError
 ## Policy 실행 계약
 
 **Policy**:
-Router에 부착되는 per-route 필터 설정 리소스. `spec.targetRef`로 Router를 참조하고, `spec.order` 값에 따라 오름차순으로 실행된다. top-level `type` 필드로 Security / Traffic / Enhance / Transform 네 가지를 구분한다.
+Router에 부착되는 per-route 필터 설정 리소스. `spec.targetRef`로 Router를 참조하고, `spec.order` 값에 따라 오름차순으로 실행된다. top-level `type` 필드는 적용할 필터의 이름이며, 이 값이 곧 Spring Cloud Gateway의 `GatewayFilterFactory` bean 이름으로 사용된다.
 _Avoid_: Filter config, middleware, plugin
 
 **Policy type**:
-Policy 리소스의 세부 종류. `type` 필드로 표현하며 기본 실행 순서는 Security(5) → Traffic(10) → Enhance(12) → Transform(15).
-_Avoid_: policyKind, subType, category
+Policy 리소스의 `type` 필드 값. `IpFilter`, `JwtValidation` 등 개별 필터 이름을 직접 지정한다. 카테고리(Security/Traffic 등) 개념은 없으며, 실행 순서는 `spec.order`만으로 제어한다.
+_Avoid_: policyKind, subType, category, Security/Traffic/Enhance/Transform
 
 **Policy 부착 방향**:
 Policy가 Router를 참조한다 (`Policy.spec.targetRef → Router`). Router는 자신에게 붙은 Policy를 알지 못한다.
 _Avoid_: Router가 Policy를 소유한다, Router inline policy
+
+**PolicyRegistry**:
+Policy 이름 → `PolicyResource` 조회를 제공하는 런타임 저장소. `StandaloneConfigLoader`가 부팅 시 등록하고, Online Mode에서도 동일한 인터페이스로 등록한다. `GatewayFilterFactory` 구현체들이 이를 주입받아 policy 이름으로 설정을 조회한다.
+_Avoid_: PolicyStore, PolicyMap, LoadedConfig 직접 주입
 
 ## Flagged ambiguities
 

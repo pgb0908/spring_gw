@@ -108,18 +108,7 @@ public class RouteTranslator {
     }
 
     private FilterDefinition toPolicyFilterDefinition(PolicyResource policy) {
-        String factoryName = switch (policy.getType()) {
-            case "Security"  -> "SecurityPolicy";
-            case "Traffic"   -> "TrafficPolicy";
-            case "Enhance"   -> "EnhancePolicy";
-            case "Transform" -> "TransformPolicy";
-            default -> {
-                log.warn("Policy type '{}' is not implemented — skipping '{}'", policy.getType(), policy.getMetadata().getName());
-                yield null;
-            }
-        };
-        if (factoryName == null) return null;
-        return new FilterDefinition(factoryName + "=" + policy.getMetadata().getName());
+        return new FilterDefinition(policy.getType() + "=" + policy.getMetadata().getName());
     }
 
     private record ResolvedDestination(String uri, List<FilterDefinition> filters, Map<String, Object> metadata) {}

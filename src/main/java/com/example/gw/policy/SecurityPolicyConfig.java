@@ -14,7 +14,6 @@ import java.util.Map;
 public class SecurityPolicyConfig {
 
     private IpFilter ipFilter;
-    private Cors cors;
     private JwtValidation jwtValidation;
 
     @Data
@@ -22,18 +21,6 @@ public class SecurityPolicyConfig {
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class IpFilter {
         private List<String> allowList = List.of();
-    }
-
-    @Data
-    @NoArgsConstructor
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    public static class Cors {
-        private List<String> allowOrigins = List.of();
-        private List<String> allowMethods = List.of();
-        private List<String> allowHeaders = List.of();
-        private List<String> exposeHeaders = List.of();
-        private boolean allowCredentials = false;
-        private int maxAge = 3600;
     }
 
     @Data
