@@ -21,12 +21,23 @@ public class ListenerPortCustomizer implements WebServerFactoryCustomizer<NettyR
     public void customize(NettyReactiveWebServerFactory factory) {
         var listeners = loader.getConfig().getListeners();
         if (listeners.isEmpty()) {
-            log.warn("No Listener config found — using default server.port");
+            log.warn("Listener config 없음 — 기본 server.port 사용");
             return;
         }
-        var listener = listeners.get(0);
-        log.info("Applying Listener '{}': port={}, protocol={}",
-                listener.getMetadata().getName(), listener.getSpec().getPort(), listener.getSpec().getProtocol());
+
+        // HTTP/HTTPS Listener만 Netty 포트로 적용한다. GRPC Listener는 GatewayGrpcServerConfig가 처리한다.
+        var httpListener = listeners.stream()
+                .filter(l -> l.getSpec().getProtocol() == com.example.gw.model.ListenerResource.Protocol.HTTP
+                          || l.getSpec().getProtocol() == com.example.gw.model.ListenerResource.Protocol.HTTPS)
+                .findFirst();
+
+        if (httpListener.isEmpty()) {
+            log.warn("HTTP/HTTPS Listener 없음 — 기본 server.port 사용");
+            return;
+        }
+
+        var listener = httpListener.get();
+        log.info("HTTP Listener '{}' 적용 — port={}", listener.getMetadata().getName(), listener.getSpec().getPort());
         factory.setPort(listener.getSpec().getPort());
     }
 }

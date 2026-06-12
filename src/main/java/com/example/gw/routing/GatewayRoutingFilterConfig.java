@@ -13,7 +13,8 @@ public class GatewayRoutingFilterConfig {
 
     @Bean
     public GatewayRoutingFilter gatewayRoutingFilter(
-            Map<String, CoreRuntimeServiceGrpc.CoreRuntimeServiceBlockingStub> flowStubs) {
-        return new GatewayRoutingFilter(flowStubs);
+            Map<String, CoreRuntimeServiceGrpc.CoreRuntimeServiceBlockingStub> flowStubs,
+            PendingResponseRegistry pendingResponseRegistry) {
+        return new GatewayRoutingFilter(flowStubs, pendingResponseRegistry);
     }
 }
