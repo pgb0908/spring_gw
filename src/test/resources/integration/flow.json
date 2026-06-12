@@ -1,0 +1,16 @@
+{
+  "apiVersion": "iip.gateway/v1alpha1",
+  "kind": "Flow",
+  "metadata": { "name": "test-flow" },
+  "spec": {
+    "protocol": "gRPC",
+    "upstreamTls": { "enabled": false },
+    "loadBalancing": {
+      "algorithm": "ROUND_ROBIN",
+      "targets": [
+        { "host": "localhost", "port": 19999, "flow-id": "test-flow-id" }
+      ]
+    },
+    "timeout": { "connect": "5s", "read": "10s" }
+  }
+}

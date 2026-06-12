@@ -1,8 +1,9 @@
 package com.example.gw.routing;
 
+import com.example.gw.gateway.RequestContext;
 import com.example.gw.model.RouterResource;
 import com.google.protobuf.ByteString;
-import com.tmax.iip.common.grpc.runtime.v1.*;
+import com.tmaxsoft.iip.common.grpc.gatewaycore.v1.*;
 import io.grpc.StatusRuntimeException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
@@ -17,15 +18,16 @@ import org.springframework.http.MediaType;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
+import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
 
 @Slf4j
 public class GatewayRoutingFilter implements GlobalFilter, Ordered {
 
-    private final Map<String, GatewayCoreServiceGrpc.GatewayCoreServiceBlockingStub> flowStubs;
+    private final Map<String, CoreRuntimeServiceGrpc.CoreRuntimeServiceBlockingStub> flowStubs;
 
-    public GatewayRoutingFilter(Map<String, GatewayCoreServiceGrpc.GatewayCoreServiceBlockingStub> flowStubs) {
+    public GatewayRoutingFilter(Map<String, CoreRuntimeServiceGrpc.CoreRuntimeServiceBlockingStub> flowStubs) {
         this.flowStubs = flowStubs;
     }
 
@@ -52,14 +54,14 @@ public class GatewayRoutingFilter implements GlobalFilter, Ordered {
     private Mono<Void> routeToFlow(ServerWebExchange exchange, Route route) {
         String flowId = (String) route.getMetadata().get("flowId");
         if (flowId == null) {
-            log.warn("Flow route '{}' has no flowId in metadata", route.getId());
+            log.warn("Flow 라우트 '{}' metadata에 flowId 없음", route.getId());
             exchange.getResponse().setStatusCode(HttpStatus.INTERNAL_SERVER_ERROR);
             return exchange.getResponse().setComplete();
         }
 
-        GatewayCoreServiceGrpc.GatewayCoreServiceBlockingStub stub = flowStubs.get(flowId);
+        CoreRuntimeServiceGrpc.CoreRuntimeServiceBlockingStub stub = flowStubs.get(flowId);
         if (stub == null) {
-            log.warn("No gRPC stub registered for flowId '{}' — route '{}'", flowId, route.getId());
+            log.warn("flowId '{}'에 등록된 gRPC stub 없음 — 라우트 '{}'", flowId, route.getId());
             exchange.getResponse().setStatusCode(HttpStatus.BAD_GATEWAY);
             return exchange.getResponse().setComplete();
         }
@@ -71,54 +73,50 @@ public class GatewayRoutingFilter implements GlobalFilter, Ordered {
                     dataBuffer.read(bodyBytes);
                     DataBufferUtils.release(dataBuffer);
 
+                    // RequestContextFilter가 심어둔 traceId/requestedAt 사용
+                    RequestContext ctx = exchange.getAttribute(RequestContext.ATTR_KEY);
+                    String guid = (ctx != null) ? ctx.getTraceId() : UUID.randomUUID().toString();
+                    long startedAt = (ctx != null)
+                            ? ctx.getRequestedAt().toEpochMilli()
+                            : Instant.now().toEpochMilli();
+
                     String contentType = exchange.getRequest().getHeaders().getContentType() != null
                             ? exchange.getRequest().getHeaders().getContentType().toString()
                             : MediaType.APPLICATION_OCTET_STREAM_VALUE;
 
-                    String traceId = exchange.getRequest().getHeaders().getFirst("X-Trace-Id");
-                    if (traceId == null) traceId = UUID.randomUUID().toString();
-
-                    ExecuteFlowRequest request = ExecuteFlowRequest.newBuilder()
+                    GatewayCoreEnvelope envelope = GatewayCoreEnvelope.newBuilder()
+                            .setGuid(guid)
                             .setFlowId(flowId)
-                            .setHeader(RuntimeHeader.newBuilder()
-                                    .setRequestId(UUID.randomUUID().toString())
-                                    .setTraceId(traceId)
-                                    .build())
-                            .setPayload(RuntimePayload.newBuilder()
-                                    .setBody(ByteString.copyFrom(bodyBytes))
-                                    .setContentType(contentType)
-                                    .build())
+                            .setStartedAt(startedAt)
+                            .setAction(GatewayCoreAction.START_REQUEST)
+                            .setPayload(ByteString.copyFrom(bodyBytes))
+                            .setContentType(contentType)
                             .build();
 
-                    ExecuteFlowResponse response;
+                    GatewayCoreAck ack;
                     try {
-                        response = stub.executeFlow(request);
+                        ack = stub.startFlow(envelope);
                     } catch (StatusRuntimeException e) {
-                        log.error("gRPC call failed for flow '{}': {}", flowId, e.getStatus());
+                        log.error("gRPC StartFlow 실패 — flowId='{}': {}", flowId, e.getStatus());
                         exchange.getResponse().setStatusCode(HttpStatus.BAD_GATEWAY);
                         return exchange.getResponse().setComplete();
                     }
 
-                    if (response.hasError()) {
-                        RuntimeError error = response.getError();
-                        log.warn("Flow '{}' returned error: code={} message={}", flowId, error.getCode(), error.getMessage());
-                        HttpStatus status = HttpStatus.resolve(response.getStatusCode());
-                        exchange.getResponse().setStatusCode(status != null ? status : HttpStatus.INTERNAL_SERVER_ERROR);
-                        DataBuffer buffer = exchange.getResponse().bufferFactory().wrap(error.getMessage().getBytes());
-                        return exchange.getResponse().writeWith(Mono.just(buffer));
+                    if (ack.getStatus() == GatewayCoreStatus.ERROR
+                            || ack.getStatus() == GatewayCoreStatus.FAILED) {
+                        log.warn("Flow '{}' 오류 응답 — status={} errorCode={} message={}",
+                                flowId, ack.getStatus(), ack.getErrorCode(), ack.getErrorMessage());
+                        exchange.getResponse().setStatusCode(HttpStatus.INTERNAL_SERVER_ERROR);
+                        if (!ack.getErrorMessage().isBlank()) {
+                            DataBuffer buffer = exchange.getResponse().bufferFactory()
+                                    .wrap(ack.getErrorMessage().getBytes());
+                            return exchange.getResponse().writeWith(Mono.just(buffer));
+                        }
+                        return exchange.getResponse().setComplete();
                     }
 
-                    HttpStatus status = HttpStatus.resolve(response.getStatusCode());
-                    exchange.getResponse().setStatusCode(status != null ? status : HttpStatus.OK);
-
-                    byte[] responseBody = response.getPayload().getBody().toByteArray();
-                    String responseContentType = response.getPayload().getContentType();
-                    if (!responseContentType.isBlank()) {
-                        exchange.getResponse().getHeaders().setContentType(MediaType.parseMediaType(responseContentType));
-                    }
-
-                    DataBuffer buffer = exchange.getResponse().bufferFactory().wrap(responseBody);
-                    return exchange.getResponse().writeWith(Mono.just(buffer));
+                    exchange.getResponse().setStatusCode(HttpStatus.OK);
+                    return exchange.getResponse().setComplete();
                 });
     }
 }

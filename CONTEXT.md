@@ -83,6 +83,20 @@ _Avoid_: Router가 Policy를 소유한다, Router inline policy
 Policy 이름 → `PolicyResource` 조회를 제공하는 런타임 저장소. `StandaloneConfigLoader`가 부팅 시 등록하고, Online Mode에서도 동일한 인터페이스로 등록한다. `GatewayFilterFactory` 구현체들이 이를 주입받아 policy 이름으로 설정을 조회한다.
 _Avoid_: PolicyStore, PolicyMap, LoadedConfig 직접 주입
 
+## 요청 컨텍스트
+
+**RequestContext**:
+게이트웨이에 요청이 진입하는 순간 생성되어 `ServerWebExchange.getAttributes()`에 저장되는 요청 범위 객체. `traceId`와 `requestedAt`을 담으며, 이후 모든 필터와 라우팅 단계에서 참조한다.
+_Avoid_: RequestInfo, GatewayContext, ExchangeContext
+
+**traceId**:
+요청마다 유일한 식별자. `X-Trace-Id` 헤더가 있으면 그 값을 사용하고, 없으면 게이트웨이가 UUID를 생성한다. `RequestContext`에 저장되며 `RuntimeHeader.trace_id`로 Flow 엔진에 전파된다.
+_Avoid_: guid, requestGuid, correlationId
+
+**requestedAt**:
+게이트웨이가 요청을 수신한 시각(`Instant`). `RequestContext`에 저장되며 응답 지연 측정 등에 사용된다.
+_Avoid_: startTime, receivedAt, timestamp
+
 ## Flagged ambiguities
 
 - "route"는 **Router** 리소스 자체와 Spring Cloud Gateway 내부의 RouteDefinition 양쪽으로 사용될 수 있음 — 도메인 용어로는 **Router**를 사용한다.

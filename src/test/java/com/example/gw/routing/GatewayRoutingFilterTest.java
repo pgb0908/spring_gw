@@ -1,7 +1,6 @@
 package com.example.gw.routing;
 
-import com.google.protobuf.ByteString;
-import com.tmax.iip.common.grpc.runtime.v1.*;
+import com.tmaxsoft.iip.common.grpc.gatewaycore.v1.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
@@ -24,32 +23,28 @@ import static org.mockito.Mockito.*;
 
 class GatewayRoutingFilterTest {
 
-    private GatewayCoreServiceGrpc.GatewayCoreServiceBlockingStub flowStub;
+    private CoreRuntimeServiceGrpc.CoreRuntimeServiceBlockingStub flowStub;
     private GatewayRoutingFilter filter;
 
     @BeforeEach
     void setUp() {
-        flowStub = mock(GatewayCoreServiceGrpc.GatewayCoreServiceBlockingStub.class);
+        flowStub = mock(CoreRuntimeServiceGrpc.CoreRuntimeServiceBlockingStub.class);
         filter = new GatewayRoutingFilter(Map.of("flow-xyz", flowStub));
     }
 
     // ── 동작 E: Flow 라우트는 gRPC stub을 호출한다 ────────────────────────
     @Test
-    void Flow_라우트는_flowId_stub으로_gRPC를_호출한다() {
+    void Flow_라우트는_flowId_stub으로_StartFlow를_호출한다() {
         var exchange = exchangeWithRoute("grpc://10.0.0.3:9090", "Flow", "flow-xyz");
 
-        ExecuteFlowResponse response = ExecuteFlowResponse.newBuilder()
-                .setStatusCode(200)
-                .setPayload(RuntimePayload.newBuilder()
-                        .setBody(ByteString.copyFromUtf8("{\"result\":\"ok\"}"))
-                        .setContentType(MediaType.APPLICATION_JSON_VALUE)
-                        .build())
-                .build();
-        when(flowStub.executeFlow(any())).thenReturn(response);
+        when(flowStub.startFlow(any())).thenReturn(
+                GatewayCoreAck.newBuilder().setStatus(GatewayCoreStatus.SUCCESS).build());
 
         StepVerifier.create(filter.filter(exchange, mockChain())).verifyComplete();
 
-        verify(flowStub).executeFlow(argThat(req -> req.getFlowId().equals("flow-xyz")));
+        verify(flowStub).startFlow(argThat(envelope ->
+                envelope.getFlowId().equals("flow-xyz")
+                        && envelope.getAction() == GatewayCoreAction.START_REQUEST));
         assertThat(exchange.getResponse().getStatusCode()).isEqualTo(HttpStatus.OK);
     }
 
@@ -69,31 +64,54 @@ class GatewayRoutingFilterTest {
     void Flow_라우팅_후_setAlreadyRouted가_설정된다() {
         var exchange = exchangeWithRoute("grpc://10.0.0.3:9090", "Flow", "flow-xyz");
 
-        ExecuteFlowResponse response = ExecuteFlowResponse.newBuilder()
-                .setStatusCode(200)
-                .build();
-        when(flowStub.executeFlow(any())).thenReturn(response);
+        when(flowStub.startFlow(any())).thenReturn(
+                GatewayCoreAck.newBuilder().setStatus(GatewayCoreStatus.SUCCESS).build());
 
         StepVerifier.create(filter.filter(exchange, mockChain())).verifyComplete();
 
         assertThat(ServerWebExchangeUtils.isAlreadyRouted(exchange)).isTrue();
     }
 
-    // ── 동작 H: Flow gRPC RuntimeError → HTTP 오류 상태 ──────────────────
+    // ── 동작 H: Flow gRPC 오류 응답 → HTTP 500 ───────────────────────────
     @Test
-    void Flow_gRPC_RuntimeError는_오류_HTTP_상태를_반환한다() {
+    void Flow_gRPC_ERROR_상태는_HTTP_500을_반환한다() {
         var exchange = exchangeWithRoute("grpc://10.0.0.3:9090", "Flow", "flow-xyz");
 
-        ExecuteFlowResponse response = ExecuteFlowResponse.newBuilder()
-                .setStatusCode(422)
-                .setError(RuntimeError.newBuilder()
-                        .setCode("INVALID").setMessage("bad input").build())
-                .build();
-        when(flowStub.executeFlow(any())).thenReturn(response);
+        when(flowStub.startFlow(any())).thenReturn(
+                GatewayCoreAck.newBuilder()
+                        .setStatus(GatewayCoreStatus.ERROR)
+                        .setErrorCode("INVALID")
+                        .setErrorMessage("bad input")
+                        .build());
 
         StepVerifier.create(filter.filter(exchange, mockChain())).verifyComplete();
 
-        assertThat(exchange.getResponse().getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);
+        assertThat(exchange.getResponse().getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    // ── 동작 I: envelope에 HTTP body와 Content-Type이 담긴다 ──────────────
+    @Test
+    void HTTP_body와_ContentType이_envelope_payload에_담긴다() {
+        var exchange = MockServerWebExchange.from(
+                MockServerHttpRequest.post("/test")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body("{\"key\":\"value\"}"));
+        Route route = Route.async()
+                .id("test-route").uri(URI.create("grpc://10.0.0.3:9090")).order(0)
+                .predicate(r -> true)
+                .metadata("destinationKind", "Flow")
+                .metadata("flowId", "flow-xyz")
+                .build();
+        exchange.getAttributes().put(ServerWebExchangeUtils.GATEWAY_ROUTE_ATTR, route);
+
+        when(flowStub.startFlow(any())).thenReturn(
+                GatewayCoreAck.newBuilder().setStatus(GatewayCoreStatus.SUCCESS).build());
+
+        StepVerifier.create(filter.filter(exchange, mockChain())).verifyComplete();
+
+        verify(flowStub).startFlow(argThat(envelope ->
+                envelope.getPayload().toStringUtf8().equals("{\"key\":\"value\"}")
+                        && envelope.getContentType().contains("application/json")));
     }
 
     // ── 헬퍼 ──────────────────────────────────────────────────────────────

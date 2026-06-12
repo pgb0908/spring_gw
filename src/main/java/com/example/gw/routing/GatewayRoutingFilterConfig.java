@@ -1,6 +1,6 @@
 package com.example.gw.routing;
 
-import com.tmax.iip.common.grpc.runtime.v1.GatewayCoreServiceGrpc;
+import com.tmaxsoft.iip.common.grpc.gatewaycore.v1.CoreRuntimeServiceGrpc;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -13,7 +13,7 @@ public class GatewayRoutingFilterConfig {
 
     @Bean
     public GatewayRoutingFilter gatewayRoutingFilter(
-            Map<String, GatewayCoreServiceGrpc.GatewayCoreServiceBlockingStub> flowStubs) {
+            Map<String, CoreRuntimeServiceGrpc.CoreRuntimeServiceBlockingStub> flowStubs) {
         return new GatewayRoutingFilter(flowStubs);
     }
 }

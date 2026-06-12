@@ -1,0 +1,6 @@
+{
+  "apiVersion": "iip.gateway/v1alpha1",
+  "kind": "Gateway",
+  "metadata": { "name": "integration-test-gateway" },
+  "spec": {}
+}

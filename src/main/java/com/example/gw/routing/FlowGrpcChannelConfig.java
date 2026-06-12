@@ -2,7 +2,7 @@ package com.example.gw.routing;
 
 import com.example.gw.model.FlowResource;
 import com.example.gw.standalone.StandaloneConfigLoader;
-import com.tmax.iip.common.grpc.runtime.v1.GatewayCoreServiceGrpc;
+import com.tmaxsoft.iip.common.grpc.gatewaycore.v1.CoreRuntimeServiceGrpc;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import lombok.RequiredArgsConstructor;
@@ -11,7 +11,6 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -24,7 +23,7 @@ public class FlowGrpcChannelConfig {
     private final StandaloneConfigLoader loader;
 
     @Bean
-    public Map<String, GatewayCoreServiceGrpc.GatewayCoreServiceBlockingStub> flowStubs() {
+    public Map<String, CoreRuntimeServiceGrpc.CoreRuntimeServiceBlockingStub> flowStubs() {
         return loader.getConfig().getFlows().values().stream()
                 .collect(Collectors.toUnmodifiableMap(
                         this::extractFlowId,
@@ -44,19 +43,19 @@ public class FlowGrpcChannelConfig {
         return flowId;
     }
 
-    private GatewayCoreServiceGrpc.GatewayCoreServiceBlockingStub buildStub(FlowResource flow) {
+    private CoreRuntimeServiceGrpc.CoreRuntimeServiceBlockingStub buildStub(FlowResource flow) {
         var targets = flow.getSpec().getLoadBalancing().getTargets();
         var target = targets.get(0);
         if (targets.size() > 1) {
-            log.warn("Flow '{}' has {} targets — only first target will be used (weighted gRPC routing not implemented)",
+            log.warn("Flow '{}' has {} targets — only first target will be used",
                     flow.getMetadata().getName(), targets.size());
         }
         ManagedChannel channel = ManagedChannelBuilder
                 .forAddress(target.getHost(), target.getPort())
                 .usePlaintext()
                 .build();
-        log.debug("gRPC channel created for flow '{}' (flowId={}) → {}:{}",
+        log.debug("gRPC 채널 생성 — flow='{}' (flowId={}) → {}:{}",
                 flow.getMetadata().getName(), target.getFlowId(), target.getHost(), target.getPort());
-        return GatewayCoreServiceGrpc.newBlockingStub(channel);
+        return CoreRuntimeServiceGrpc.newBlockingStub(channel);
     }
 }
