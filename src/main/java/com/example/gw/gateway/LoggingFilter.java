@@ -1,4 +1,4 @@
-package com.example.gw.filter;
+package com.example.gw.gateway;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;

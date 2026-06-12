@@ -1,7 +1,7 @@
 package com.example.gw.standalone;
 
 import com.example.gw.model.*;
-import com.example.gw.filter.PolicyRegistry;
+import com.example.gw.policy.PolicyRegistry;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;

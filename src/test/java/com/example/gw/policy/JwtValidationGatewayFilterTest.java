@@ -1,4 +1,4 @@
-package com.example.gw.filter;
+package com.example.gw.policy;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nimbusds.jose.JWSAlgorithm;

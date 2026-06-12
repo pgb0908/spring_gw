@@ -1,4 +1,4 @@
-package com.example.gw.flow;
+package com.example.gw.routing;
 
 import com.example.gw.model.FlowResource;
 import com.example.gw.standalone.StandaloneConfigLoader;

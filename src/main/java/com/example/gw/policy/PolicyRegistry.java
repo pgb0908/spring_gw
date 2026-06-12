@@ -1,4 +1,4 @@
-package com.example.gw.filter;
+package com.example.gw.policy;
 
 import com.example.gw.model.PolicyResource;
 

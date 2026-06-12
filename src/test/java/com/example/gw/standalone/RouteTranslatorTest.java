@@ -1,6 +1,6 @@
 package com.example.gw.standalone;
 
-import com.example.gw.filter.InMemoryPolicyRegistry;
+import com.example.gw.policy.InMemoryPolicyRegistry;
 import com.example.gw.model.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

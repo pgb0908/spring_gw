@@ -1,4 +1,4 @@
-package com.example.gw.config;
+package com.example.gw.standalone;
 
 import com.example.gw.model.GatewayResource;
 import com.example.gw.standalone.StandaloneConfigLoader;

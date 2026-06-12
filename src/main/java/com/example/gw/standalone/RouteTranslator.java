@@ -1,6 +1,6 @@
 package com.example.gw.standalone;
 
-import com.example.gw.filter.PolicyRegistry;
+import com.example.gw.policy.PolicyRegistry;
 import com.example.gw.model.RouterResource;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

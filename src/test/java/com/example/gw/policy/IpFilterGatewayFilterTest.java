@@ -1,4 +1,4 @@
-package com.example.gw.filter;
+package com.example.gw.policy;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;

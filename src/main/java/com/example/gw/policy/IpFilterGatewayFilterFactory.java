@@ -1,4 +1,4 @@
-package com.example.gw.filter;
+package com.example.gw.policy;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.Data;
@@ -11,7 +11,7 @@ import java.util.List;
 
 @Slf4j
 @Component
-public class JwtValidationGatewayFilterFactory extends AbstractGatewayFilterFactory<JwtValidationGatewayFilterFactory.Config> {
+public class IpFilterGatewayFilterFactory extends AbstractGatewayFilterFactory<IpFilterGatewayFilterFactory.Config> {
 
     private final PolicyRegistry policyRegistry;
     private final ObjectMapper objectMapper;
@@ -21,7 +21,7 @@ public class JwtValidationGatewayFilterFactory extends AbstractGatewayFilterFact
         private String policyName;
     }
 
-    public JwtValidationGatewayFilterFactory(PolicyRegistry policyRegistry, ObjectMapper objectMapper) {
+    public IpFilterGatewayFilterFactory(PolicyRegistry policyRegistry, ObjectMapper objectMapper) {
         super(Config.class);
         this.policyRegistry = policyRegistry;
         this.objectMapper = objectMapper;
@@ -38,11 +38,11 @@ public class JwtValidationGatewayFilterFactory extends AbstractGatewayFilterFact
                 .orElseThrow(() -> new IllegalStateException("Policy not found: " + config.getPolicyName()));
 
         try {
-            var jwtConfig = objectMapper.convertValue(policy.getSpec().getConfig(), SecurityPolicyConfig.JwtValidation.class);
-            return new JwtValidationGatewayFilter(jwtConfig.getPublicKey(), jwtConfig.getClaimsToHeaders());
+            var ipConfig = objectMapper.convertValue(policy.getSpec().getConfig(), SecurityPolicyConfig.IpFilter.class);
+            return new IpFilterGatewayFilter(ipConfig.getAllowList());
         } catch (Exception e) {
-            log.error("Failed to parse JwtValidation config for '{}': {}", config.getPolicyName(), e.getMessage());
-            throw new IllegalStateException("Invalid JwtValidation config: " + config.getPolicyName(), e);
+            log.error("Failed to parse IpFilter config for '{}': {}", config.getPolicyName(), e.getMessage());
+            return new IpFilterGatewayFilter(List.of());
         }
     }
 }

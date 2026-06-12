@@ -1,4 +1,4 @@
-package com.example.gw.config;
+package com.example.gw.gateway;
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
