@@ -15,6 +15,7 @@ public class SecurityPolicyConfig {
 
     private IpFilter ipFilter;
     private JwtValidation jwtValidation;
+    private ApiKeyAuth apiKeyAuth;
 
     @Data
     @NoArgsConstructor
@@ -30,5 +31,13 @@ public class SecurityPolicyConfig {
         private String issuer;
         private JsonNode publicKey;
         private Map<String, String> claimsToHeaders = Map.of();
+    }
+
+    @Data
+    @NoArgsConstructor
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class ApiKeyAuth {
+        private String header = "X-API-Key";
+        private List<String> keys = List.of();
     }
 }

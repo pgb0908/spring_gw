@@ -2,125 +2,47 @@
 
 **개요**
 
-API 게이트웨이의 보안을 담당하는 핵심 설정입니다.
+Router에 부착되는 per-route 보안 필터 설정 리소스. Policy 하나가 필터 하나에 대응하며, `type` 필드가 적용할 필터를 결정한다.
 
-이 설정은 "누가(IP), 어떤 권한으로(JWT), 어디서(CORS) 접근 가능한가"를 제어합니다.
+지원 필터 타입:
 
-**필수 필드**
+| type | 동작 |
+|---|---|
+| `IpFilter` | 클라이언트 IP를 allowList와 대조해 차단 |
+| `JwtValidation` | Bearer JWT를 RSA 공개키로 검증하고 claim을 헤더로 주입 |
+| `ApiKeyAuth` | 지정 헤더의 API Key를 허용 목록과 대조해 인증 |
 
-필드명 | 필수 | 설명
----|---|---
-apiVersion | Yes | 리소스 버전
-kind | Yes | 리소스 종류 (Policy)
-metadata.name | Yes | 정책 이름
-spec.targetRef.name | Yes | 적용 대상 이름
-spec.policyRef.name | Yes | 정책 템플릿 식별자
-spec.config | Yes | 보안 설정
+**공통 필드**
 
-**타입별 가이드**
+| 필드 | 필수 | 설명 |
+|---|---|---|
+| `apiVersion` | Yes | 리소스 버전 |
+| `kind` | Yes | `"Policy"` 고정 |
+| `type` | Yes | 필터 이름 (`IpFilter` \| `JwtValidation` \| `ApiKeyAuth`) |
+| `metadata.name` | Yes | Policy 이름 |
+| `spec.targetRef.name` | Yes | 적용 대상 Router 이름 |
+| `spec.order` | No | 실행 순서 오름차순 (기본값 `0`) |
+| `spec.config` | Yes | 필터별 설정 (아래 타입별 스키마 참조) |
 
-유형 | 주요 필드 | 사용 시나리오
----|---|---
-JWT 검증 | jwtValidation | 토큰 기반 인증
-IP 제한 | ipFilter | 네트워크 접근 제어
-CORS | cors | 브라우저 접근 제어
+> `spec.targetRef.kind`는 항상 `"Router"`이며 생략 가능.
 
-**스키마**
+---
+
+## IpFilter
+
+클라이언트 IP가 `allowList`에 포함되지 않으면 `403 Forbidden` 반환. `allowList`가 비어있으면 모든 IP 허용.
+
+**spec.config 스키마**
 
 ```json
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "type": "object",
-  "required": ["apiVersion", "kind", "metadata", "spec"],
-  "properties": {
-    "apiVersion": { "type": "string" },
-    "kind": { "type": "string", "const": "Policy" },
-    "metadata": {
-      "type": "object",
-      "required": ["name"],
-      "properties": {
-        "name": { "type": "string" }
-      }
-    },
-    "spec": {
-      "type": "object",
-      "required": ["targetRef", "policyRef", "config"],
-      "properties": {
-        "targetRef": {
-          "type": "object",
-          "required": ["name"],
-          "properties": {
-            "kind": { "type": "string", "enum": ["Router", "Service"], "default": "Router" },
-            "name": { "type": "string" }
-          }
-        },
-        "policyRef": {
-          "type": "object",
-          "required": ["name"],
-          "properties": {
-            "name": { "type": "string" },
-            "namespace": { "type": "string", "default": "default" }
-          }
-        },
-        "order": {
-          "type": "integer",
-          "default": 5,
-          "description": "Security policies usually have lower order (higher priority) than traffic policies"
-        },
-        "rules": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "properties": {
-              "methods": { "type": "string", "pattern": "^[A-Z|]+$" },
-              "path": { "type": "string" }
-            }
-          }
-        },
-        "config": {
-          "type": "object",
-          "properties": {
-            "jwtValidation": {
-              "type": "object",
-              "required": ["issuer", "jwksUrl"],
-              "properties": {
-                "issuer": { "type": "string", "format": "uri" },
-                "audiences": { "type": "array", "items": { "type": "string" } },
-                "jwksUrl": { "type": "string", "format": "uri" },
-                "clockSkewSeconds": { "type": "integer", "minimum": 0, "default": 60 },
-                "claimsToHeaders": { "type": "object", "additionalProperties": { "type": "string" } }
-              }
-            },
-            "ipFilter": {
-              "type": "object",
-              "properties": {
-                "allowList": {
-                  "type": "array",
-                  "items": {
-                    "type": "string",
-                    "pattern": "^([0-9]{1,3}\\.){3}[0-9]{1,3}(\\/([0-9]|[1-2][0-9]|3[0-2]))?$"
-                  }
-                }
-              }
-            },
-            "cors": {
-              "type": "object",
-              "properties": {
-                "allowOrigins": { "type": "array", "items": { "type": "string" } },
-                "allowMethods": { "type": "array", "items": { "type": "string" } },
-                "allowHeaders": { "type": "array", "items": { "type": "string" } },
-                "exposeHeaders": { "type": "array", "items": { "type": "string" } },
-                "allowCredentials": { "type": "boolean" },
-                "maxAge": { "type": "integer", "minimum": 0 }
-              }
-            }
-          }
-        }
-      }
-    }
-  }
+  "allowList": ["<IP 또는 CIDR>"]
 }
 ```
+
+| 필드 | 타입 | 설명 |
+|---|---|---|
+| `allowList` | `string[]` | 허용할 IP 또는 CIDR 목록. 생략 시 전체 허용 |
 
 **예시**
 
@@ -128,58 +50,136 @@ CORS | cors | 브라우저 접근 제어
 {
   "apiVersion": "iip.gateway/v1alpha1",
   "kind": "Policy",
+  "type": "IpFilter",
   "metadata": {
-    "name": "secure-orders-policy"
+    "name": "orders-ip-filter"
   },
   "spec": {
     "targetRef": {
       "kind": "Router",
       "name": "route-to-orders"
     },
-    "policyRef": {
-      "name": "security-policy-v1",
-      "namespace": "default"
-    },
     "order": 5,
-    "rules": [
-      {
-        "path": "/api/orders/private(/.*)",
-        "methods": "POST|PUT|DELETE"
-      }
-    ],
     "config": {
-      "jwtValidation": {
-        "issuer": "https://auth.example.com",
-        "audiences": [
-          "ecommerce-service",
-          "any-api-gateway"
-        ],
-        "jwksUrl": "https://auth.example.com/.well-known/jwks.json",
-        "clockSkewSeconds": 60,
-        "claimsToHeaders": {
-          "sub": "X-User-ID",
-          "email": "X-User-Email",
-          "role": "X-User-Role"
-        }
+      "allowList": [
+        "10.0.0.0/8",
+        "192.168.1.100"
+      ]
+    }
+  }
+}
+```
+
+---
+
+## JwtValidation
+
+`Authorization: Bearer <token>` 헤더를 검증한다. 토큰이 없거나 서명 검증에 실패하거나 만료된 경우 `401 Unauthorized` 반환. 검증 성공 시 `claimsToHeaders` 매핑에 따라 claim 값을 요청 헤더로 주입한다.
+
+**spec.config 스키마**
+
+```json
+{
+  "publicKey": { "<RSA JWK>" },
+  "claimsToHeaders": {
+    "<claim 이름>": "<헤더 이름>"
+  }
+}
+```
+
+| 필드 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| `publicKey` | RSA JWK object | Yes | JWT 서명 검증에 사용할 RSA 공개키 (JWK 포맷) |
+| `claimsToHeaders` | `object` | No | claim → 요청 헤더 매핑. claim 값이 없으면 해당 헤더 생략 |
+
+**예시**
+
+```json
+{
+  "apiVersion": "iip.gateway/v1alpha1",
+  "kind": "Policy",
+  "type": "JwtValidation",
+  "metadata": {
+    "name": "orders-jwt"
+  },
+  "spec": {
+    "targetRef": {
+      "kind": "Router",
+      "name": "route-to-orders"
+    },
+    "order": 10,
+    "config": {
+      "publicKey": {
+        "kty": "RSA",
+        "n": "...",
+        "e": "AQAB"
       },
-      "ipFilter": {
-        "allowList": [
-          "192.168.1.0/24",
-          "10.0.0.5/32"
-        ]
-      },
-      "cors": {
-        "allowOrigins": [
-          "https://app.example.com",
-          "https://admin.example.com"
-        ],
-        "allowMethods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-        "allowHeaders": ["Content-Type", "Authorization", "X-Request-ID"],
-        "exposeHeaders": ["X-Total-Count"],
-        "allowCredentials": true,
-        "maxAge": 3600
+      "claimsToHeaders": {
+        "sub": "X-User-ID",
+        "email": "X-User-Email"
       }
     }
   }
 }
+```
+
+---
+
+## ApiKeyAuth
+
+지정한 요청 헤더에서 API Key를 읽어 `keys` 목록과 대조한다. 헤더가 없거나 목록에 없는 키이면 `401 Unauthorized` 반환.
+
+**spec.config 스키마**
+
+```json
+{
+  "header": "<헤더 이름>",
+  "keys": ["<key1>", "<key2>"]
+}
+```
+
+| 필드 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| `header` | `string` | No | API Key를 읽을 요청 헤더 이름. 기본값 `X-API-Key` |
+| `keys` | `string[]` | Yes | 허용할 API Key 목록. 하나 이상 필수 |
+
+**예시**
+
+```json
+{
+  "apiVersion": "iip.gateway/v1alpha1",
+  "kind": "Policy",
+  "type": "ApiKeyAuth",
+  "metadata": {
+    "name": "orders-api-key"
+  },
+  "spec": {
+    "targetRef": {
+      "kind": "Router",
+      "name": "route-to-orders"
+    },
+    "order": 5,
+    "config": {
+      "header": "X-API-Key",
+      "keys": [
+        "service-a-key-abc123",
+        "service-b-key-def456"
+      ]
+    }
+  }
+}
+```
+
+---
+
+## 여러 Policy를 한 Router에 부착하는 경우
+
+Policy는 Router를 참조하며 Router는 Policy를 알지 못한다. 같은 Router를 참조하는 여러 Policy를 정의하면 `spec.order` 오름차순으로 순차 실행된다.
+
+```json
+// order 5: IP 차단 먼저
+{ "type": "IpFilter", "spec": { "targetRef": { "name": "route-to-orders" }, "order": 5, ... } }
+
+// order 10: JWT 검증 이후
+{ "type": "JwtValidation", "spec": { "targetRef": { "name": "route-to-orders" }, "order": 10, ... } }
 ```
