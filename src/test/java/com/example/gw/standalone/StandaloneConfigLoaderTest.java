@@ -1,6 +1,6 @@
 package com.example.gw.standalone;
 
-import com.example.gw.policy.InMemoryPolicyRegistry;
+import com.example.gw.filter.InMemoryPolicyRegistry;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;

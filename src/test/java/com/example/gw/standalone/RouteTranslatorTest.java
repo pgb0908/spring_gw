@@ -1,6 +1,8 @@
 package com.example.gw.standalone;
 
+import com.example.gw.filter.InMemoryPolicyRegistry;
 import com.example.gw.model.*;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -10,7 +12,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class RouteTranslatorTest {
 
-    private final RouteTranslator translator = new RouteTranslator();
+    private InMemoryPolicyRegistry policyRegistry;
+    private RouteTranslator translator;
+
+    @BeforeEach
+    void setUp() {
+        policyRegistry = new InMemoryPolicyRegistry();
+        translator = new RouteTranslator(policyRegistry, new DestinationResolver());
+    }
 
     // ── 동작 5: Connector 목적지 → http://host:port URI ───────────────────
     @Test
@@ -114,17 +123,12 @@ class RouteTranslatorTest {
     // ── 동작 11: Policy 1개가 order 위치에 필터로 추가된다 ───────────────
     @Test
     void Router에_Policy_1개가_있으면_해당_필터가_추가된다() {
-        var router = router("r1", "/api/**", "GET", RouterResource.DestinationKind.Connector, "svc");
-        var conn = connector("svc", "HTTP", "localhost", 8080);
-        var policy = policy("p1", "IpFilter", "r1", 5);
+        registerPolicy("p1", "IpFilter", "r1", 5);
 
-        var config = LoadedConfig.builder()
-                .listeners(List.of()).gateway(null)
-                .routers(List.of(router))
-                .connectors(Map.of("svc", conn))
-                .flows(Map.of())
-                .policies(List.of(policy))
-                .build();
+        var config = configWith(
+                router("r1", "/api/**", "GET", RouterResource.DestinationKind.Connector, "svc"),
+                connector("svc", "HTTP", "localhost", 8080)
+        );
 
         var route = translator.translate(config).get(0);
 
@@ -136,18 +140,13 @@ class RouteTranslatorTest {
     // ── 동작 12: 여러 Policy가 order 오름차순으로 정렬된다 ──────────────
     @Test
     void 여러_Policy가_order_오름차순으로_필터에_추가된다() {
-        var router = router("r1", "/api/**", "GET", RouterResource.DestinationKind.Connector, "svc");
-        var conn = connector("svc", "HTTP", "localhost", 8080);
-        var jwt = policy("jwt-p", "JwtValidation", "r1", 10);
-        var ip = policy("ip-p", "IpFilter", "r1", 5);
+        registerPolicy("jwt-p", "JwtValidation", "r1", 10);
+        registerPolicy("ip-p", "IpFilter", "r1", 5);
 
-        var config = LoadedConfig.builder()
-                .listeners(List.of()).gateway(null)
-                .routers(List.of(router))
-                .connectors(Map.of("svc", conn))
-                .flows(Map.of())
-                .policies(List.of(jwt, ip))
-                .build();
+        var config = configWith(
+                router("r1", "/api/**", "GET", RouterResource.DestinationKind.Connector, "svc"),
+                connector("svc", "HTTP", "localhost", 8080)
+        );
 
         var route = translator.translate(config).get(0);
 
@@ -158,13 +157,23 @@ class RouteTranslatorTest {
 
     // ── 헬퍼 메서드 ────────────────────────────────────────────────────────
 
+    private void registerPolicy(String name, String type, String routerName, int order) {
+        var p = new PolicyResource();
+        p.getMetadata().setName(name);
+        p.setType(type);
+        var targetRef = new PolicyResource.TargetRef();
+        targetRef.setName(routerName);
+        p.getSpec().setTargetRef(targetRef);
+        p.getSpec().setOrder(order);
+        policyRegistry.register(p);
+    }
+
     private LoadedConfig configWith(RouterResource router, ConnectorResource connector) {
         return LoadedConfig.builder()
                 .listeners(List.of()).gateway(null)
                 .routers(List.of(router))
                 .connectors(Map.of(connector.getMetadata().getName(), connector))
                 .flows(Map.of())
-                .policies(List.of())
                 .build();
     }
 
@@ -174,7 +183,6 @@ class RouteTranslatorTest {
                 .routers(List.of(router))
                 .connectors(Map.of())
                 .flows(Map.of(flow.getMetadata().getName(), flow))
-                .policies(List.of())
                 .build();
     }
 
@@ -199,17 +207,6 @@ class RouteTranslatorTest {
         target.setPort(port);
         c.getSpec().getLoadBalancing().setTargets(List.of(target));
         return c;
-    }
-
-    private com.example.gw.model.PolicyResource policy(String name, String type, String routerName, int order) {
-        var p = new com.example.gw.model.PolicyResource();
-        p.getMetadata().setName(name);
-        p.setType(type);
-        var targetRef = new com.example.gw.model.PolicyResource.TargetRef();
-        targetRef.setName(routerName);
-        p.getSpec().setTargetRef(targetRef);
-        p.getSpec().setOrder(order);
-        return p;
     }
 
     private FlowResource flow(String name, String host, int port, String flowId) {

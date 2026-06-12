@@ -1,5 +1,6 @@
 package com.example.gw.routing;
 
+import com.example.gw.model.RouterResource;
 import com.google.protobuf.ByteString;
 import com.tmax.iip.common.grpc.runtime.v1.*;
 import io.grpc.StatusRuntimeException;
@@ -41,7 +42,7 @@ public class GatewayRoutingFilter implements GlobalFilter, Ordered {
         }
 
         String destinationKind = (String) route.getMetadata().get("destinationKind");
-        if ("Flow".equals(destinationKind)) {
+        if (RouterResource.DestinationKind.Flow.name().equals(destinationKind)) {
             ServerWebExchangeUtils.setAlreadyRouted(exchange);
             return routeToFlow(exchange, route);
         }
