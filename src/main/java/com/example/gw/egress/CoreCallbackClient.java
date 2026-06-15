@@ -1,5 +1,6 @@
 package com.example.gw.egress;
 
+import com.example.gw.model.FlowEnvelope;
 import com.example.gw.standalone.StandaloneConfigLoader;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -29,7 +30,7 @@ public class CoreCallbackClient {
         this.objectMapper = objectMapper;
     }
 
-    public Mono<Void> postResponse(ConnectorEnvelope response) {
+    public Mono<Void> postResponse(FlowEnvelope response) {
         String url = resolveCoreCallbackUrl(response.getCoreId());
         if (url == null) {
             log.warn("core_id '{}' 에 대한 콜백 URL 없음 — CONNECTOR_RESPONSE 전송 불가 (guid={})",

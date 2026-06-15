@@ -1,4 +1,4 @@
-package com.example.gw.egress;
+package com.example.gw.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -12,7 +12,7 @@ import java.util.Map;
 @NoArgsConstructor
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public class ConnectorEnvelope {
+public class FlowEnvelope {
     private String guid;
     private String status;
     @JsonProperty("error_code")
@@ -43,5 +43,7 @@ public class ConnectorEnvelope {
     private String action;
     private String payload;
     private String charset;
+    @JsonProperty("content_type")
+    private String contentType;
     private Map<String, String> header;
 }

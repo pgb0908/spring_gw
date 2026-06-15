@@ -1,6 +1,6 @@
 package com.example.gw.routing;
 
-import com.tmaxsoft.iip.common.grpc.gatewaycore.v1.*;
+import com.example.gw.model.FlowEnvelope;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
@@ -15,64 +15,52 @@ import reactor.core.publisher.Sinks;
 import reactor.test.StepVerifier;
 
 import java.net.URI;
-import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.*;
 
 class GatewayRoutingFilterTest {
 
-    private CoreRuntimeServiceGrpc.CoreRuntimeServiceBlockingStub flowStub;
+    private CoreHttpClient coreHttpClient;
     private PendingResponseRegistry pendingResponseRegistry;
     private GatewayRoutingFilter filter;
 
     @BeforeEach
     void setUp() {
-        flowStub = mock(CoreRuntimeServiceGrpc.CoreRuntimeServiceBlockingStub.class);
+        coreHttpClient = mock(CoreHttpClient.class);
         pendingResponseRegistry = mock(PendingResponseRegistry.class);
-        filter = new GatewayRoutingFilter(Map.of("flow-xyz", flowStub), pendingResponseRegistry);
+        filter = new GatewayRoutingFilter(coreHttpClient, pendingResponseRegistry);
     }
 
-    // ── 동작 E: Flow 라우트는 StartFlow를 호출하고 SendResponse를 기다린다 ────
+    // ── 동작 E: Flow 라우트는 StartFlow를 호출하고 ResponseRequest를 기다린다 ─
+
     @Test
-    void Flow_라우트는_StartFlow_후_SendResponse_응답을_HTTP로_반환한다() {
-        var exchange = exchangeWithRoute("grpc://10.0.0.3:9090", "Flow", "flow-xyz");
+    void Flow_라우트는_StartFlow_후_ResponseRequest_응답을_HTTP로_반환한다() {
+        var exchange = exchangeWithRoute("http://10.0.0.3:8080", "Flow", "flow-xyz");
 
-        // StartFlow는 RECEIVED(수신 확인)를 즉시 반환한다
-        when(flowStub.startFlow(any())).thenReturn(
-                GatewayCoreAck.newBuilder().setStatus(GatewayCoreStatus.RECEIVED).build());
+        FlowEnvelope ack = ack("test-guid");
+        when(coreHttpClient.postStartFlow(anyString(), any())).thenReturn(Mono.just(ack));
 
-        // PendingResponseRegistry에 sink가 등록되면 즉시 SendResponse 응답을 주입한다
-        GatewayCoreEnvelope sendResponseEnvelope = GatewayCoreEnvelope.newBuilder()
-                .setGuid("test-guid")
-                .setFlowId("flow-xyz")
-                .setStatus(GatewayCoreStatus.SUCCESS)
-                .setPayload(com.google.protobuf.ByteString.copyFromUtf8("{\"result\":\"ok\"}"))
-                .setContentType(MediaType.APPLICATION_JSON_VALUE)
-                .build();
-
+        FlowEnvelope responseEnvelope = responseEnvelope("test-guid", "SUCCESS",
+                "{\"result\":\"ok\"}", MediaType.APPLICATION_JSON_VALUE);
         doAnswer(invocation -> {
-            String guid = invocation.getArgument(0);
-            Sinks.One<GatewayCoreEnvelope> sink = invocation.getArgument(1);
-            sink.tryEmitValue(sendResponseEnvelope);
+            Sinks.One<FlowEnvelope> sink = invocation.getArgument(1);
+            sink.tryEmitValue(responseEnvelope);
             return null;
         }).when(pendingResponseRegistry).register(anyString(), any());
 
-        // ReportResponseResult stub
-        when(flowStub.reportResponseResult(any())).thenReturn(
-                GatewayCoreAck.newBuilder().setStatus(GatewayCoreStatus.RECEIVED).build());
-
         StepVerifier.create(filter.filter(exchange, mockChain())).verifyComplete();
 
-        verify(flowStub).startFlow(argThat(env ->
-                env.getFlowId().equals("flow-xyz")
-                        && env.getAction() == GatewayCoreAction.START_REQUEST));
+        verify(coreHttpClient).postStartFlow(eq("flow-xyz"),
+                argThat(env -> "START_REQUEST".equals(env.getAction()) && "flow-xyz".equals(env.getFlowId())));
         assertThat(exchange.getResponse().getStatusCode()).isEqualTo(HttpStatus.OK);
     }
 
     // ── 동작 F: Connector 라우트는 chain을 통과시킨다 ─────────────────────
+
     @Test
     void Connector_라우트는_chain을_통과시킨다() {
         var exchange = exchangeWithRoute("http://10.0.0.1:8080", "Connector", null);
@@ -84,19 +72,15 @@ class GatewayRoutingFilterTest {
     }
 
     // ── 동작 G: Flow 라우팅 후 setAlreadyRouted가 설정된다 ────────────────
+
     @Test
     void Flow_라우팅_후_setAlreadyRouted가_설정된다() {
-        var exchange = exchangeWithRoute("grpc://10.0.0.3:9090", "Flow", "flow-xyz");
+        var exchange = exchangeWithRoute("http://10.0.0.3:8080", "Flow", "flow-xyz");
 
-        when(flowStub.startFlow(any())).thenReturn(
-                GatewayCoreAck.newBuilder().setStatus(GatewayCoreStatus.RECEIVED).build());
-
-        GatewayCoreEnvelope responseEnvelope = GatewayCoreEnvelope.newBuilder()
-                .setStatus(GatewayCoreStatus.SUCCESS).build();
-        doAnswer(inv -> { ((Sinks.One<GatewayCoreEnvelope>) inv.getArgument(1)).tryEmitValue(responseEnvelope); return null; })
+        when(coreHttpClient.postStartFlow(anyString(), any())).thenReturn(Mono.just(ack("g-1")));
+        FlowEnvelope responseEnvelope = responseEnvelope("g-1", "SUCCESS", null, null);
+        doAnswer(inv -> { ((Sinks.One<FlowEnvelope>) inv.getArgument(1)).tryEmitValue(responseEnvelope); return null; })
                 .when(pendingResponseRegistry).register(anyString(), any());
-        when(flowStub.reportResponseResult(any())).thenReturn(
-                GatewayCoreAck.newBuilder().setStatus(GatewayCoreStatus.RECEIVED).build());
 
         StepVerifier.create(filter.filter(exchange, mockChain())).verifyComplete();
 
@@ -104,15 +88,16 @@ class GatewayRoutingFilterTest {
     }
 
     // ── 동작 H: StartFlow가 ERROR를 반환하면 HTTP 502를 반환한다 ─────────
+
     @Test
     void StartFlow_ERROR_응답은_HTTP_502를_반환한다() {
-        var exchange = exchangeWithRoute("grpc://10.0.0.3:9090", "Flow", "flow-xyz");
+        var exchange = exchangeWithRoute("http://10.0.0.3:8080", "Flow", "flow-xyz");
 
-        when(flowStub.startFlow(any())).thenReturn(
-                GatewayCoreAck.newBuilder()
-                        .setStatus(GatewayCoreStatus.ERROR)
-                        .setErrorMessage("flow not found")
-                        .build());
+        FlowEnvelope errorAck = new FlowEnvelope();
+        errorAck.setGuid("g-1");
+        errorAck.setStatus("ERROR");
+        errorAck.setErrorMessage("flow not found");
+        when(coreHttpClient.postStartFlow(anyString(), any())).thenReturn(Mono.just(errorAck));
 
         StepVerifier.create(filter.filter(exchange, mockChain())).verifyComplete();
 
@@ -120,52 +105,65 @@ class GatewayRoutingFilterTest {
         verify(pendingResponseRegistry).error(anyString(), any());
     }
 
-    // ── 동작 I: SendResponse ERROR는 HTTP 500을 반환한다 ─────────────────
+    // ── 동작 I: ResponseRequest ERROR는 HTTP 500을 반환한다 ──────────────
+
     @Test
-    void SendResponse_ERROR_상태는_HTTP_500을_반환한다() {
-        var exchange = exchangeWithRoute("grpc://10.0.0.3:9090", "Flow", "flow-xyz");
+    void ResponseRequest_ERROR_상태는_HTTP_500을_반환한다() {
+        var exchange = exchangeWithRoute("http://10.0.0.3:8080", "Flow", "flow-xyz");
 
-        when(flowStub.startFlow(any())).thenReturn(
-                GatewayCoreAck.newBuilder().setStatus(GatewayCoreStatus.RECEIVED).build());
-
-        GatewayCoreEnvelope errorEnvelope = GatewayCoreEnvelope.newBuilder()
-                .setStatus(GatewayCoreStatus.ERROR)
-                .setErrorMessage("flow execution failed")
-                .build();
-        doAnswer(inv -> { ((Sinks.One<GatewayCoreEnvelope>) inv.getArgument(1)).tryEmitValue(errorEnvelope); return null; })
+        when(coreHttpClient.postStartFlow(anyString(), any())).thenReturn(Mono.just(ack("g-1")));
+        FlowEnvelope errorEnvelope = responseEnvelope("g-1", "ERROR", null, null);
+        errorEnvelope.setErrorMessage("flow execution failed");
+        doAnswer(inv -> { ((Sinks.One<FlowEnvelope>) inv.getArgument(1)).tryEmitValue(errorEnvelope); return null; })
                 .when(pendingResponseRegistry).register(anyString(), any());
-        when(flowStub.reportResponseResult(any())).thenReturn(
-                GatewayCoreAck.newBuilder().setStatus(GatewayCoreStatus.RECEIVED).build());
 
         StepVerifier.create(filter.filter(exchange, mockChain())).verifyComplete();
 
         assertThat(exchange.getResponse().getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
-        verify(flowStub).reportResponseResult(any());
+        verify(coreHttpClient).postResponseAckAsync(eq("flow-xyz"), any());
     }
 
-    // ── 동작 J: SendResponse 후 ReportResponseResult가 호출된다 ──────────
+    // ── 동작 J: ResponseRequest 수신 후 ResponseAck가 호출된다 ────────────
+
     @Test
-    void SendResponse_수신_후_ReportResponseResult가_호출된다() throws InterruptedException {
-        var exchange = exchangeWithRoute("grpc://10.0.0.3:9090", "Flow", "flow-xyz");
+    void ResponseRequest_수신_후_ResponseAck가_호출된다() throws InterruptedException {
+        var exchange = exchangeWithRoute("http://10.0.0.3:8080", "Flow", "flow-xyz");
 
-        when(flowStub.startFlow(any())).thenReturn(
-                GatewayCoreAck.newBuilder().setStatus(GatewayCoreStatus.RECEIVED).build());
-
-        GatewayCoreEnvelope responseEnvelope = GatewayCoreEnvelope.newBuilder()
-                .setGuid("g-1").setFlowId("flow-xyz").setStatus(GatewayCoreStatus.SUCCESS).build();
-        doAnswer(inv -> { ((Sinks.One<GatewayCoreEnvelope>) inv.getArgument(1)).tryEmitValue(responseEnvelope); return null; })
+        when(coreHttpClient.postStartFlow(anyString(), any())).thenReturn(Mono.just(ack("g-1")));
+        FlowEnvelope responseEnvelope = responseEnvelope("g-1", "SUCCESS", null, null);
+        doAnswer(inv -> { ((Sinks.One<FlowEnvelope>) inv.getArgument(1)).tryEmitValue(responseEnvelope); return null; })
                 .when(pendingResponseRegistry).register(anyString(), any());
-        when(flowStub.reportResponseResult(any())).thenReturn(
-                GatewayCoreAck.newBuilder().setStatus(GatewayCoreStatus.RECEIVED).build());
 
         StepVerifier.create(filter.filter(exchange, mockChain())).verifyComplete();
 
-        // fireReportResponseResult는 boundedElastic 스레드에서 비동기 실행된다
-        Thread.sleep(100);
-        verify(flowStub).reportResponseResult(argThat(env -> env.getGuid().equals("g-1")));
+        // postResponseAckAsync는 doOnTerminate에서 실행되므로 완료 후 즉시 확인 가능
+        verify(coreHttpClient).postResponseAckAsync(eq("flow-xyz"),
+                argThat(env -> "g-1".equals(env.getGuid())));
     }
 
     // ── 헬퍼 ──────────────────────────────────────────────────────────────
+
+    private FlowEnvelope ack(String guid) {
+        FlowEnvelope env = new FlowEnvelope();
+        env.setGuid(guid);
+        env.setStatus("RUNNING");
+        env.setErrorCode("");
+        env.setErrorMessage("");
+        return env;
+    }
+
+    private FlowEnvelope responseEnvelope(String guid, String status, String payloadJson, String contentType) {
+        FlowEnvelope env = new FlowEnvelope();
+        env.setGuid(guid);
+        env.setFlowId("flow-xyz");
+        env.setStatus(status);
+        env.setAction("RESPONSE_REQUEST");
+        if (payloadJson != null) {
+            env.setPayload(java.util.Base64.getEncoder().encodeToString(payloadJson.getBytes()));
+        }
+        env.setContentType(contentType);
+        return env;
+    }
 
     private MockServerWebExchange exchangeWithRoute(String uri, String destinationKind, String flowId) {
         var exchange = MockServerWebExchange.from(

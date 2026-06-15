@@ -50,9 +50,9 @@ class RouteTranslatorTest {
         assertThat(routes.get(0).getUri().getScheme()).isEqualTo("https");
     }
 
-    // ── 동작 7: Flow 목적지 → grpc:// URI + metadata(destinationKind, flowId) ─
+    // ── 동작 7: Flow 목적지 → http:// URI + metadata(destinationKind, flowId) ─
     @Test
-    void Flow_목적지는_grpc_URI와_metadata로_변환된다() {
+    void Flow_목적지는_http_URI와_metadata로_변환된다() {
         var config = configWithFlow(
                 router("r1", "/flow/**", "POST", RouterResource.DestinationKind.Flow, "my-flow"),
                 flow("my-flow", "10.0.0.3", 9090, "flow-xyz")
@@ -60,8 +60,8 @@ class RouteTranslatorTest {
 
         var routes = translator.translate(config);
 
-        assertThat(routes.get(0).getUri().getScheme()).isEqualTo("grpc");
-        assertThat(routes.get(0).getUri().toString()).isEqualTo("grpc://10.0.0.3:9090");
+        assertThat(routes.get(0).getUri().getScheme()).isEqualTo("http");
+        assertThat(routes.get(0).getUri().toString()).isEqualTo("http://10.0.0.3:9090");
         assertThat(routes.get(0).getMetadata()).containsEntry("destinationKind", "Flow");
         assertThat(routes.get(0).getMetadata()).containsEntry("flowId", "flow-xyz");
         assertThat(routes.get(0).getFilters())

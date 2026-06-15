@@ -28,7 +28,7 @@ public class ListenerResource {
         private Connection connection;
     }
 
-    public enum Protocol { HTTP, HTTPS, TCP, GRPC }
+    public enum Protocol { HTTP, HTTPS, TCP }
 
     public enum Role { INGRESS, EGRESS }
 

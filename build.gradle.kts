@@ -1,7 +1,6 @@
 plugins {
     id("org.springframework.boot") version "3.3.5"
     id("io.spring.dependency-management") version "1.1.6"
-    id("com.google.protobuf") version "0.9.4"
     java
 }
 
@@ -24,48 +23,19 @@ repositories {
 
 extra["springCloudVersion"] = "2023.0.3"
 
-val grpcVersion = "1.65.1"
-val protobufVersion = "3.25.3"
-
 dependencies {
     implementation("org.springframework.cloud:spring-cloud-starter-gateway")
     implementation("org.springframework.boot:spring-boot-starter-actuator")
     implementation("com.fasterxml.jackson.core:jackson-databind")
 
-    // gRPC
-    implementation("io.grpc:grpc-netty:${grpcVersion}")
-    implementation("io.grpc:grpc-protobuf:${grpcVersion}")
-    implementation("io.grpc:grpc-stub:${grpcVersion}")
-    implementation("com.google.protobuf:protobuf-java:${protobufVersion}")
-    compileOnly("jakarta.annotation:jakarta.annotation-api:1.3.5")
-
     compileOnly("org.projectlombok:lombok")
     annotationProcessor("org.projectlombok:lombok")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("io.projectreactor:reactor-test")
-    testImplementation("io.grpc:grpc-testing:${grpcVersion}")
     implementation("com.nimbusds:nimbus-jose-jwt:9.37.3")
     testCompileOnly("org.projectlombok:lombok")
     testAnnotationProcessor("org.projectlombok:lombok")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
-}
-
-protobuf {
-    protoc {
-        artifact = "com.google.protobuf:protoc:${protobufVersion}"
-    }
-    plugins {
-        create("grpc") {
-            artifact = "io.grpc:protoc-gen-grpc-java:${grpcVersion}"
-        }
-    }
-    generateProtoTasks {
-        all().forEach { task ->
-            task.plugins {
-                create("grpc")
-            }
-        }
-    }
 }
 
 dependencyManagement {

@@ -44,7 +44,7 @@ public class DestinationResolver {
         if (target.getFlowId() != null && !target.getFlowId().isBlank()) {
             metadata.put("flowId", target.getFlowId());
         }
-        return new ResolvedDestination("grpc://" + target.getHost() + ":" + target.getPort(), List.of(), metadata);
+        return new ResolvedDestination("http://" + target.getHost() + ":" + target.getPort(), List.of(), metadata);
     }
 
     private static <T> T firstTarget(List<T> targets, String kind, String name) {

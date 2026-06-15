@@ -1,6 +1,7 @@
 package com.example.gw.egress;
 
 import com.example.gw.model.ConnectorResource;
+import com.example.gw.model.FlowEnvelope;
 import com.example.gw.standalone.StandaloneConfigLoader;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -42,9 +43,9 @@ public class EgressConnectorHandler {
     public Publisher<Void> handleRequest(HttpServerRequest req, HttpServerResponse res) {
         return req.receive().aggregate().asByteArray()
                 .flatMap(bytes -> {
-                    ConnectorEnvelope envelope;
+                    FlowEnvelope envelope;
                     try {
-                        envelope = objectMapper.readValue(bytes, ConnectorEnvelope.class);
+                        envelope = objectMapper.readValue(bytes, FlowEnvelope.class);
                     } catch (Exception e) {
                         log.error("CONNECTOR_REQUEST 파싱 실패: {}", e.getMessage());
                         return res.status(400).send();
@@ -61,7 +62,7 @@ public class EgressConnectorHandler {
                         return res.status(500).send();
                     }
 
-                    final ConnectorEnvelope finalEnvelope = envelope;
+                    final FlowEnvelope finalEnvelope = envelope;
                     return res.header("Content-Type", "application/json")
                             .sendString(Mono.just(ackJson))
                             .then()
@@ -69,7 +70,7 @@ public class EgressConnectorHandler {
                 });
     }
 
-    private void processAsync(ConnectorEnvelope req) {
+    private void processAsync(FlowEnvelope req) {
         Mono.defer(() -> {
             byte[] payloadBytes = decodePayload(req.getPayload());
             String backendUrl = resolveBackendUrl(req.getConnectorId());
@@ -86,7 +87,7 @@ public class EgressConnectorHandler {
                     .bodyValue(payloadBytes)
                     .exchangeToMono(response -> response.toEntity(byte[].class))
                     .flatMap(entity -> {
-                        ConnectorEnvelope callbackEnvelope = buildResponse(req, entity.getStatusCode().value(),
+                        FlowEnvelope callbackEnvelope = buildResponse(req, entity.getStatusCode().value(),
                                 entity.getBody(), entity.getHeaders().toSingleValueMap());
                         return coreCallbackClient.postResponse(callbackEnvelope);
                     });
@@ -98,8 +99,8 @@ public class EgressConnectorHandler {
         );
     }
 
-    private ConnectorEnvelope buildAck(ConnectorEnvelope req) {
-        ConnectorEnvelope ack = new ConnectorEnvelope();
+    private FlowEnvelope buildAck(FlowEnvelope req) {
+        FlowEnvelope ack = new FlowEnvelope();
         ack.setGuid(req.getGuid());
         ack.setStatus("RUNNING");
         ack.setErrorCode("");
@@ -107,10 +108,9 @@ public class EgressConnectorHandler {
         return ack;
     }
 
-    private ConnectorEnvelope buildResponse(ConnectorEnvelope req, int httpStatus,
-                                            byte[] body, Map<String, String> responseHeaders) {
-        ConnectorEnvelope resp = new ConnectorEnvelope();
-        // 요청에서 에코
+    private FlowEnvelope buildResponse(FlowEnvelope req, int httpStatus,
+                                       byte[] body, Map<String, String> responseHeaders) {
+        FlowEnvelope resp = new FlowEnvelope();
         resp.setGuid(req.getGuid());
         resp.setFlowId(req.getFlowId());
         resp.setFlowVersion(req.getFlowVersion());
@@ -119,7 +119,6 @@ public class EgressConnectorHandler {
         resp.setNodeId(req.getNodeId());
         resp.setNodeType(req.getNodeType());
         resp.setStartedAt(req.getStartedAt());
-        // GW가 채움
         resp.setGatewayId(resolveGatewayId());
         resp.setConnectorId(req.getConnectorId());
         resp.setFinishedAt(System.currentTimeMillis());
@@ -129,8 +128,7 @@ public class EgressConnectorHandler {
             resp.setStatus("RUNNING");
             byte[] responseBody = body != null ? body : new byte[0];
             resp.setPayload(Base64.getEncoder().encodeToString(responseBody));
-            Map<String, String> filteredHeaders = new HashMap<>(responseHeaders);
-            resp.setHeader(filteredHeaders);
+            resp.setHeader(new HashMap<>(responseHeaders));
         } else {
             resp.setStatus("ERROR");
             resp.setErrorCode("BACKEND_ERROR");

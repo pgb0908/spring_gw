@@ -20,7 +20,7 @@ public class FlowResource {
     @NoArgsConstructor
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class Spec {
-        private String protocol = "gRPC";
+        private String protocol = "HTTP";
         private ConnectorResource.UpstreamTls upstreamTls;
         private LoadBalancing loadBalancing = new LoadBalancing();
         private ConnectorResource.TimeoutPolicy timeout;

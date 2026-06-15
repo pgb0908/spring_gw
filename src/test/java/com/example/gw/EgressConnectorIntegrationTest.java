@@ -1,6 +1,6 @@
 package com.example.gw;
 
-import com.example.gw.egress.ConnectorEnvelope;
+import com.example.gw.model.FlowEnvelope;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.AfterAll;
@@ -54,7 +54,7 @@ class EgressConnectorIntegrationTest {
 
     static final AtomicReference<byte[]> lastBackendBody = new AtomicReference<>();
     static final AtomicReference<String> lastBackendCustomHeader = new AtomicReference<>();
-    static final AtomicReference<ConnectorEnvelope> lastCoreCallback = new AtomicReference<>();
+    static final AtomicReference<FlowEnvelope> lastCoreCallback = new AtomicReference<>();
 
     static DisposableServer mockBackend;
     static DisposableServer mockCore;
@@ -81,7 +81,7 @@ class EgressConnectorIntegrationTest {
                     return req.receive().aggregate().asString()
                             .doOnNext(json -> {
                                 try {
-                                    lastCoreCallback.set(MAPPER.readValue(json, ConnectorEnvelope.class));
+                                    lastCoreCallback.set(MAPPER.readValue(json, FlowEnvelope.class));
                                 } catch (Exception e) {
                                     log.error("콜백 파싱 실패: {}", e.getMessage());
                                 }
@@ -113,7 +113,7 @@ class EgressConnectorIntegrationTest {
 
     @Test
     void CONNECTOR_REQUEST_수신_즉시_RUNNING_ACK_반환() throws Exception {
-        ConnectorEnvelope ack = sendRequest(buildRequest("test-guid-001", "core-01", null));
+        FlowEnvelope ack = sendRequest(buildRequest("test-guid-001", "core-01", null));
 
         assertThat(ack.getGuid()).isEqualTo("test-guid-001");
         assertThat(ack.getStatus()).isEqualTo("RUNNING");
@@ -121,7 +121,7 @@ class EgressConnectorIntegrationTest {
 
     @Test
     void ACK_에는_error_code와_error_message가_빈_값() throws Exception {
-        ConnectorEnvelope ack = sendRequest(buildRequest("test-guid-002", "core-01", null));
+        FlowEnvelope ack = sendRequest(buildRequest("test-guid-002", "core-01", null));
 
         assertThat(ack.getErrorCode()).isEmpty();
         assertThat(ack.getErrorMessage()).isEmpty();
@@ -146,7 +146,7 @@ class EgressConnectorIntegrationTest {
 
     @Test
     void header_맵이_HTTP_요청_헤더로_백엔드에_전달된다() throws Exception {
-        ConnectorEnvelope req = buildRequest("test-guid-004", "core-01", null);
+        FlowEnvelope req = buildRequest("test-guid-004", "core-01", null);
         req.setHeader(Map.of("X-Custom-Header", "custom-value"));
 
         sendRequest(req);
@@ -166,7 +166,7 @@ class EgressConnectorIntegrationTest {
 
         Thread.sleep(300);
 
-        ConnectorEnvelope callback = lastCoreCallback.get();
+        FlowEnvelope callback = lastCoreCallback.get();
         assertThat(callback).isNotNull();
         assertThat(callback.getStatus()).isEqualTo("RUNNING");
         assertThat(callback.getAction()).isEqualTo("CONNECTOR_RESPONSE");
@@ -232,8 +232,8 @@ class EgressConnectorIntegrationTest {
 
     // ── 헬퍼 ──────────────────────────────────────────────────────────────
 
-    private ConnectorEnvelope buildRequest(String guid, String coreId, String payload) {
-        ConnectorEnvelope req = new ConnectorEnvelope();
+    private FlowEnvelope buildRequest(String guid, String coreId, String payload) {
+        FlowEnvelope req = new FlowEnvelope();
         req.setGuid(guid);
         req.setStatus("RUNNING");
         req.setFlowId("flow-test");
@@ -246,7 +246,7 @@ class EgressConnectorIntegrationTest {
         return req;
     }
 
-    private ConnectorEnvelope sendRequest(ConnectorEnvelope req) throws Exception {
+    private FlowEnvelope sendRequest(FlowEnvelope req) throws Exception {
         String reqJson = MAPPER.writeValueAsString(req);
         String responseJson = WebClient.create("http://localhost:" + EGRESS_PORT)
                 .post()
@@ -256,6 +256,6 @@ class EgressConnectorIntegrationTest {
                 .retrieve()
                 .bodyToMono(String.class)
                 .block(Duration.ofSeconds(5));
-        return MAPPER.readValue(responseJson, ConnectorEnvelope.class);
+        return MAPPER.readValue(responseJson, FlowEnvelope.class);
     }
 }

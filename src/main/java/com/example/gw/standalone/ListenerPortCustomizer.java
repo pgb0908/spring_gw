@@ -25,7 +25,7 @@ public class ListenerPortCustomizer implements WebServerFactoryCustomizer<NettyR
             return;
         }
 
-        // HTTP/HTTPS Listener만 Netty 포트로 적용한다. GRPC Listener는 GatewayGrpcServerConfig가 처리한다.
+        // INGRESS role의 HTTP/HTTPS Listener만 Netty 포트로 적용한다.
         var httpListener = listeners.stream()
                 .filter(l -> (l.getSpec().getProtocol() == com.example.gw.model.ListenerResource.Protocol.HTTP
                            || l.getSpec().getProtocol() == com.example.gw.model.ListenerResource.Protocol.HTTPS)
