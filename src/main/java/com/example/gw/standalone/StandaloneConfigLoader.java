@@ -1,7 +1,6 @@
 package com.example.gw.standalone;
 
 import com.example.gw.model.*;
-import com.example.gw.policy.PolicyRegistry;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -21,16 +20,13 @@ public class StandaloneConfigLoader {
 
     private final String configDir;
     private final ObjectMapper objectMapper;
-    private final PolicyRegistry policyRegistry;
     private volatile LoadedConfig cached;
 
     public StandaloneConfigLoader(
             @Value("${gateway.standalone.config-dir}") String configDir,
-            ObjectMapper objectMapper,
-            PolicyRegistry policyRegistry) {
+            ObjectMapper objectMapper) {
         this.configDir = configDir;
         this.objectMapper = objectMapper;
-        this.policyRegistry = policyRegistry;
     }
 
     public LoadedConfig getConfig() {
@@ -88,7 +84,6 @@ public class StandaloneConfigLoader {
                             continue;
                         }
                         policies.add(p);
-                        policyRegistry.register(p);
                     }
                     default          -> log.warn("Unknown kind '{}' in {}", kind, file.getName());
                 }

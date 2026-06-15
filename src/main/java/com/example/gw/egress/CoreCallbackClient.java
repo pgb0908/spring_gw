@@ -1,40 +1,38 @@
 package com.example.gw.egress;
 
 import com.example.gw.model.FlowEnvelope;
-import com.example.gw.standalone.StandaloneConfigLoader;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.MediaType;
-import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
+import java.util.Map;
+
 @Slf4j
-@Component
-@ConditionalOnProperty(name = "gateway.mode", havingValue = "standalone")
 public class CoreCallbackClient {
 
     private static final String CALLBACK_PATH = "/gateway/connector/response";
 
     private final WebClient webClient;
-    private final StandaloneConfigLoader configLoader;
     private final ObjectMapper objectMapper;
+    private final Map<String, String> coreUrlMap;
 
     public CoreCallbackClient(WebClient.Builder webClientBuilder,
-                              StandaloneConfigLoader configLoader,
-                              ObjectMapper objectMapper) {
+                              ObjectMapper objectMapper,
+                              Map<String, String> coreUrlMap) {
         this.webClient = webClientBuilder.build();
-        this.configLoader = configLoader;
         this.objectMapper = objectMapper;
+        this.coreUrlMap = coreUrlMap;
     }
 
     public Mono<Void> postResponse(FlowEnvelope response) {
-        String url = resolveCoreCallbackUrl(response.getCoreId());
-        if (url == null) {
+        String coreId = response.getCoreId();
+        String baseUrl = (coreId != null && !coreId.isBlank()) ? coreUrlMap.get(coreId) : null;
+        if (baseUrl == null) {
             log.warn("core_id '{}' 에 대한 콜백 URL 없음 — CONNECTOR_RESPONSE 전송 불가 (guid={})",
-                    response.getCoreId(), response.getGuid());
+                    coreId, response.getGuid());
             return Mono.empty();
         }
 
@@ -47,7 +45,7 @@ public class CoreCallbackClient {
         }
 
         return webClient.post()
-                .uri(url + CALLBACK_PATH)
+                .uri(baseUrl + CALLBACK_PATH)
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(json)
                 .retrieve()
@@ -55,15 +53,5 @@ public class CoreCallbackClient {
                 .doOnSuccess(r -> log.debug("CONNECTOR_RESPONSE 전송 완료 — guid={}", response.getGuid()))
                 .doOnError(e -> log.error("CONNECTOR_RESPONSE 전송 실패 — guid={}: {}", response.getGuid(), e.getMessage()))
                 .then();
-    }
-
-    private String resolveCoreCallbackUrl(String coreId) {
-        if (coreId == null || coreId.isBlank()) return null;
-        return configLoader.getConfig().getFlows().values().stream()
-                .flatMap(f -> f.getSpec().getLoadBalancing().getTargets().stream())
-                .filter(t -> coreId.equals(t.getCoreId()))
-                .findFirst()
-                .map(t -> "http://" + t.getHost() + ":" + t.getPort())
-                .orElse(null);
     }
 }

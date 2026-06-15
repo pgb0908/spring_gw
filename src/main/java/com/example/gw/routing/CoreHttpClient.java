@@ -1,23 +1,17 @@
 package com.example.gw.routing;
 
 import com.example.gw.model.FlowEnvelope;
-import com.example.gw.standalone.StandaloneConfigLoader;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.MediaType;
-import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
 import java.util.Map;
-import java.util.stream.Collectors;
 
 @Slf4j
-@Component
-@ConditionalOnProperty(name = "gateway.mode", havingValue = "standalone")
 public class CoreHttpClient {
 
     private static final String START_FLOW_PATH = "/core/flows/start";
@@ -25,15 +19,14 @@ public class CoreHttpClient {
 
     private final WebClient webClient;
     private final ObjectMapper objectMapper;
-    // flow_id → Core 베이스 URL
     private final Map<String, String> flowUrlMap;
 
     public CoreHttpClient(WebClient.Builder webClientBuilder,
                           ObjectMapper objectMapper,
-                          StandaloneConfigLoader configLoader) {
+                          Map<String, String> flowUrlMap) {
         this.webClient = webClientBuilder.build();
         this.objectMapper = objectMapper;
-        this.flowUrlMap = buildFlowUrlMap(configLoader);
+        this.flowUrlMap = flowUrlMap;
     }
 
     public Mono<FlowEnvelope> postStartFlow(String flowId, FlowEnvelope envelope) {
@@ -86,17 +79,5 @@ public class CoreHttpClient {
                         r -> log.debug("ResponseAck 전송 완료 — guid={}", envelope.getGuid()),
                         e -> log.error("ResponseAck 전송 실패 — guid={}: {}", envelope.getGuid(), e.getMessage())
                 );
-    }
-
-    private static Map<String, String> buildFlowUrlMap(StandaloneConfigLoader configLoader) {
-        return configLoader.getConfig().getFlows().values().stream()
-                .flatMap(flow -> flow.getSpec().getLoadBalancing().getTargets().stream()
-                        .filter(t -> t.getFlowId() != null && !t.getFlowId().isBlank())
-                        .map(t -> Map.entry(
-                                t.getFlowId(),
-                                "http://" + t.getHost() + ":" + t.getPort()
-                        )))
-                .collect(Collectors.toUnmodifiableMap(Map.Entry::getKey, Map.Entry::getValue,
-                        (a, b) -> a));
     }
 }

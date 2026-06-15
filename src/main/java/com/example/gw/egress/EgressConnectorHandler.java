@@ -15,10 +15,7 @@ import reactor.core.scheduler.Schedulers;
 import reactor.netty.http.server.HttpServerRequest;
 import reactor.netty.http.server.HttpServerResponse;
 
-import java.util.Base64;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 @Slf4j
 @Component
@@ -26,7 +23,7 @@ import java.util.Map;
 public class EgressConnectorHandler {
 
     private final ObjectMapper objectMapper;
-    private final WebClient webClient;
+    private final ConnectorCallExecutor executor;
     private final CoreCallbackClient coreCallbackClient;
     private final StandaloneConfigLoader configLoader;
 
@@ -35,7 +32,7 @@ public class EgressConnectorHandler {
                                   CoreCallbackClient coreCallbackClient,
                                   StandaloneConfigLoader configLoader) {
         this.objectMapper = objectMapper;
-        this.webClient = webClientBuilder.build();
+        this.executor = new ConnectorCallExecutor(webClientBuilder.build());
         this.coreCallbackClient = coreCallbackClient;
         this.configLoader = configLoader;
     }
@@ -51,8 +48,7 @@ public class EgressConnectorHandler {
                         return res.status(400).send();
                     }
 
-                    log.info("▶ CONNECTOR_REQUEST 수신 — guid={}, coreId={}, connectorId={}",
-                            envelope.getGuid(), envelope.getCoreId(), envelope.getConnectorId());
+                    log.info("▶ CONNECTOR_REQUEST 수신 — guid={}, coreId={}", envelope.getGuid(), envelope.getCoreId());
 
                     String ackJson;
                     try {
@@ -71,32 +67,25 @@ public class EgressConnectorHandler {
     }
 
     private void processAsync(FlowEnvelope req) {
-        Mono.defer(() -> {
-            byte[] payloadBytes = decodePayload(req.getPayload());
-            String backendUrl = resolveBackendUrl(req.getConnectorId());
-            if (backendUrl == null) {
-                log.error("백엔드 URL 없음 — connector_id={}, guid={}", req.getConnectorId(), req.getGuid());
-                return Mono.empty();
-            }
+        String backendUrl = resolveBackendUrl(req.getConnectorId());
+        if (backendUrl == null) {
+            log.error("백엔드 URL 없음 — connector_id={}, guid={}", req.getConnectorId(), req.getGuid());
+            return;
+        }
 
-            return webClient.post()
-                    .uri(backendUrl)
-                    .headers(h -> {
-                        if (req.getHeader() != null) req.getHeader().forEach(h::set);
-                    })
-                    .bodyValue(payloadBytes)
-                    .exchangeToMono(response -> response.toEntity(byte[].class))
-                    .flatMap(entity -> {
-                        FlowEnvelope callbackEnvelope = buildResponse(req, entity.getStatusCode().value(),
-                                entity.getBody(), entity.getHeaders().toSingleValueMap());
-                        return coreCallbackClient.postResponse(callbackEnvelope);
-                    });
-        })
-        .subscribeOn(Schedulers.boundedElastic())
-        .subscribe(
-                null,
-                e -> log.error("Egress 처리 실패 — guid={}: {}", req.getGuid(), e.getMessage())
-        );
+        FlowEnvelope enriched = enrichWithGatewayId(req);
+        executor.execute(backendUrl, enriched)
+                .flatMap(coreCallbackClient::postResponse)
+                .subscribeOn(Schedulers.boundedElastic())
+                .subscribe(
+                        null,
+                        e -> log.error("Egress 처리 실패 — guid={}: {}", req.getGuid(), e.getMessage())
+                );
+    }
+
+    private FlowEnvelope enrichWithGatewayId(FlowEnvelope req) {
+        req.setGatewayId(resolveGatewayId());
+        return req;
     }
 
     private FlowEnvelope buildAck(FlowEnvelope req) {
@@ -106,46 +95,6 @@ public class EgressConnectorHandler {
         ack.setErrorCode("");
         ack.setErrorMessage("");
         return ack;
-    }
-
-    private FlowEnvelope buildResponse(FlowEnvelope req, int httpStatus,
-                                       byte[] body, Map<String, String> responseHeaders) {
-        FlowEnvelope resp = new FlowEnvelope();
-        resp.setGuid(req.getGuid());
-        resp.setFlowId(req.getFlowId());
-        resp.setFlowVersion(req.getFlowVersion());
-        resp.setCoreId(req.getCoreId());
-        resp.setIngressGatewayId(req.getIngressGatewayId());
-        resp.setNodeId(req.getNodeId());
-        resp.setNodeType(req.getNodeType());
-        resp.setStartedAt(req.getStartedAt());
-        resp.setGatewayId(resolveGatewayId());
-        resp.setConnectorId(req.getConnectorId());
-        resp.setFinishedAt(System.currentTimeMillis());
-        resp.setAction("CONNECTOR_RESPONSE");
-
-        if (httpStatus >= 200 && httpStatus < 300) {
-            resp.setStatus("RUNNING");
-            byte[] responseBody = body != null ? body : new byte[0];
-            resp.setPayload(Base64.getEncoder().encodeToString(responseBody));
-            resp.setHeader(new HashMap<>(responseHeaders));
-        } else {
-            resp.setStatus("ERROR");
-            resp.setErrorCode("BACKEND_ERROR");
-            resp.setErrorMessage("Backend returned HTTP " + httpStatus);
-        }
-
-        return resp;
-    }
-
-    private byte[] decodePayload(String payload) {
-        if (payload == null || payload.isBlank()) return new byte[0];
-        try {
-            return Base64.getDecoder().decode(payload);
-        } catch (IllegalArgumentException e) {
-            log.warn("payload base64 디코딩 실패 — raw bytes로 처리");
-            return payload.getBytes();
-        }
     }
 
     private String resolveBackendUrl(String connectorId) {
