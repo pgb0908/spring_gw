@@ -42,5 +42,7 @@ public class FlowResource {
         private int port = 80;
         @JsonProperty("flow-id")
         private String flowId = "";
+        @JsonProperty("core-id")
+        private String coreId = "";
     }
 }

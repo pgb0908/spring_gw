@@ -34,5 +34,5 @@ GatewayRoutingFilter (재개)
 ## Consequences
 
 - HTTP 응답 대기(hold) 구현에 `Sinks.One`과 `PendingResponseRegistry`(ConcurrentHashMap)가 필요하다. 대기 중인 요청이 응답을 받지 못하면 메모리가 누수될 수 있으므로, 운영 환경에서는 타임아웃으로 sink를 강제 만료하는 처리가 필요하다.
-- 게이트웨이가 gRPC 클라이언트(StartFlow, ReportResponseResult)인 동시에 gRPC 서버(SendResponse)로 동작한다.
+- 게이트웨이가 gRPC 클라이언트(StartFlow, ReportResponseResult)인 동시에 gRPC 서버(SendResponse)로 동작한다. `StartFlow`를 서버 사이드 스트리밍(`returns (stream GatewayCoreEnvelope)`)으로 변경하면 게이트웨이가 별도 gRPC 서버를 띄울 필요가 없어지나, 이는 Flow 팀과의 외부 proto 계약이므로 게이트웨이 팀이 단독으로 변경할 수 없다.
 - `ReportResponseResult`는 HTTP 응답 전송 직후 fire-and-forget으로 실행된다. 실패해도 HTTP 클라이언트는 이미 응답을 받은 상태이므로 로그로만 기록한다.

@@ -1,0 +1,14 @@
+{
+  "apiVersion": "iip.gateway/v1alpha1",
+  "kind": "Connector",
+  "metadata": { "name": "mock-backend" },
+  "spec": {
+    "protocol": "HTTP",
+    "loadBalancing": {
+      "algorithm": "ROUND_ROBIN",
+      "targets": [
+        { "host": "localhost", "port": 19996 }
+      ]
+    }
+  }
+}

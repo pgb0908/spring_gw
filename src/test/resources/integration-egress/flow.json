@@ -1,0 +1,14 @@
+{
+  "apiVersion": "iip.gateway/v1alpha1",
+  "kind": "Flow",
+  "metadata": { "name": "test-core-flow" },
+  "spec": {
+    "protocol": "gRPC",
+    "loadBalancing": {
+      "algorithm": "ROUND_ROBIN",
+      "targets": [
+        { "host": "localhost", "port": 19995, "flow-id": "dummy-flow", "core-id": "core-01" }
+      ]
+    }
+  }
+}

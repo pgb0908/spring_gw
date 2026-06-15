@@ -98,10 +98,6 @@ public class StandaloneConfigLoader {
             }
         }
 
-        if (listeners.size() > 1) {
-            log.warn("Multiple Listeners found — only '{}' will be used", listeners.get(0).getMetadata().getName());
-        }
-
         return LoadedConfig.builder()
                 .listeners(listeners)
                 .gateway(gateway[0])

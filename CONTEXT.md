@@ -97,6 +97,29 @@ _Avoid_: guid, requestGuid, correlationId
 게이트웨이가 요청을 수신한 시각(`Instant`). `RequestContext`에 저장되며 응답 지연 측정 등에 사용된다.
 _Avoid_: startTime, receivedAt, timestamp
 
+## Egress 통신 계약
+
+**Egress Flow**:
+Flow 엔진이 외부 서비스 호출을 GW에 위임하는 패턴. GW가 Connector를 통해 외부 백엔드를 호출하고 결과를 Flow에 돌려준다. Ingress Flow(HTTP 클라이언트 → GW → Flow)와 방향이 반대다.
+_Avoid_: Outbound flow, reverse flow, callback flow
+
+**ConnectorEnvelope**:
+Egress Flow에서 Flow와 GW 사이에 주고받는 JSON 메시지 포맷. `guid`(커넥터 호출 단위 UUID), `core_id`, `flow_id`, `payload`(base64), `header` 맵, `action`, `status` 등을 포함한다. CONNECTOR_REQUEST와 CONNECTOR_RESPONSE 양쪽에 동일한 구조를 사용한다.
+_Avoid_: FlowCoreEnvelope, EgressMessage, ConnectorMessage
+
+**CONNECTOR_REQUEST**:
+Flow 엔진이 GW에 외부 Connector 호출을 요청하는 메시지. `action: CONNECTOR_REQUEST`. `payload`는 base64 인코딩된 외부 백엔드 HTTP 요청 본문이며, `header` 맵은 외부 백엔드로 전달할 HTTP 헤더다. GW는 즉시 `status: RUNNING` ACK를 반환하고 비동기로 처리한다.
+_Avoid_: ConnectorCallRequest, FlowRequest, EgressRequest
+
+**CONNECTOR_RESPONSE**:
+GW가 외부 Connector 호출 결과를 Flow 엔진에 전달하는 콜백 메시지. `action: CONNECTOR_RESPONSE`. 외부 백엔드 응답 본문이 `payload`(base64)로, 응답 헤더가 `header` 맵으로 담긴다. 성공 시 `status: RUNNING`(Flow 실행 계속), 실패 시 `status: ERROR`와 `error_code`를 포함한다.
+_Avoid_: ConnectorCallResponse, FlowResponse, EgressResponse
+
+**Egress Listener**:
+Flow 엔진이 GW에 CONNECTOR_REQUEST를 보내는 전용 Listener 포트. 외부 클라이언트 트래픽을 수신하는 Ingress Listener와 분리된 포트에서 동작한다.
+_Avoid_: Internal listener, Flow listener, callback port
+
 ## Flagged ambiguities
 
 - "route"는 **Router** 리소스 자체와 Spring Cloud Gateway 내부의 RouteDefinition 양쪽으로 사용될 수 있음 — 도메인 용어로는 **Router**를 사용한다.
+- CONNECTOR_RESPONSE의 `status: RUNNING`은 커넥터 호출 성공을 뜻하지 않는다 — Flow 실행이 아직 진행 중임을 나타내는 Flow 실행 상태값이다.

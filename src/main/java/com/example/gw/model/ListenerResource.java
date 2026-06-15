@@ -20,6 +20,7 @@ public class ListenerResource {
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class Spec {
         private Protocol protocol = Protocol.HTTP;
+        private Role role = Role.INGRESS;
         private int port = 8080;
         private String host = "0.0.0.0";
         private List<String> allowedHostnames = List.of();
@@ -28,6 +29,8 @@ public class ListenerResource {
     }
 
     public enum Protocol { HTTP, HTTPS, TCP, GRPC }
+
+    public enum Role { INGRESS, EGRESS }
 
     @Data
     @NoArgsConstructor
