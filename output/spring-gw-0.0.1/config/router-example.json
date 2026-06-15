@@ -1,0 +1,22 @@
+{
+  "apiVersion": "iip.gateway/v1alpha1",
+  "kind": "Router",
+  "metadata": { "name": "example-router" },
+  "spec": {
+    "rule": {
+      "protocol": "HTTP",
+      "match": {
+        "path": "/api/example/**",
+        "methods": "GET"
+      }
+    },
+    "destinations": [
+      {
+        "destinationRef": {
+          "kind": "Connector",
+          "name": "example-connector"
+        }
+      }
+    ]
+  }
+}

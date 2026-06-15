@@ -1,0 +1,19 @@
+{
+  "apiVersion": "iip.gateway/v1alpha1",
+  "kind": "Gateway",
+  "metadata": { "name": "main-gateway" },
+  "spec": {
+    "globalPolicy": {
+      "cors": {
+        "allowOrigins": ["*"],
+        "allowMethods": ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+        "allowHeaders": ["*"],
+        "allowCredentials": false,
+        "maxAge": 3600
+      }
+    },
+    "logging": {
+      "accessLog": { "enabled": true, "format": "JSON" }
+    }
+  }
+}

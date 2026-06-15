@@ -1,0 +1,11 @@
+{
+  "apiVersion": "iip.gateway/v1alpha1",
+  "kind": "Listener",
+  "metadata": { "name": "egress-listener" },
+  "spec": {
+    "protocol": "HTTP",
+    "role": "EGRESS",
+    "port": 8090,
+    "host": "0.0.0.0"
+  }
+}

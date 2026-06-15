@@ -1,0 +1,4 @@
+- 양방향 스트리밍 필요 
+- context 정보 수정 필요 
+- egress gateway에 대한 동작 구조
+  - flow --> context에서 라우팅 정보 추출 --> 라우팅 --> connector

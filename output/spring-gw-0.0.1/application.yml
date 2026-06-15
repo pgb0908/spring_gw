@@ -1,0 +1,27 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      routes: []
+
+gateway:
+  mode: standalone
+  standalone:
+    config-dir: ./config
+
+management:
+  endpoint:
+    gateway:
+      enabled: true
+  endpoints:
+    web:
+      exposure:
+        include: health, info, gateway
+
+logging:
+  level:
+    com.example.gw: DEBUG

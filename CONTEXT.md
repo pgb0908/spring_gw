@@ -21,7 +21,7 @@ HTTP/HTTPS 백엔드 서버 집합과 연결 정책(로드밸런싱, 재시도, 
 _Avoid_: Backend, upstream, service, target
 
 **Flow**:
-Integration 엔진과의 gRPC 통신 정의. Connector와 유사하나 각 타겟에 `flow-id`를 포함한다.
+Integration 엔진(Core)과의 HTTP 통신 정의. Connector와 유사하나 각 타겟에 `flow-id`와 `core-id`를 포함한다. StartFlow / ResponseRequest / ResponseAck 3단계 비동기 패턴으로 동작한다.
 _Avoid_: gRPC service, integration connector
 
 **Standalone Mode**:

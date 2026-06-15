@@ -1,0 +1,22 @@
+{
+  "apiVersion": "iip.gateway/v1alpha1",
+  "kind": "Router",
+  "metadata": { "name": "flow-router" },
+  "spec": {
+    "rule": {
+      "protocol": "HTTP",
+      "match": {
+        "path": "/api/flow/**",
+        "methods": "POST"
+      }
+    },
+    "destinations": [
+      {
+        "destinationRef": {
+          "kind": "Flow",
+          "name": "example-flow"
+        }
+      }
+    ]
+  }
+}
