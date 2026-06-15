@@ -12,17 +12,18 @@
 필드명 | 필수 | 설명
 ---|---|---
 apiVersion | Yes | 리소스 버전
-kind | Yes | 리소스 종류 (`Connector`)
-metadata.name | Yes | Connector 리소스 이름
+kind | Yes | 리소스 종류
+uid | Yes | 리소스 UID
+workspaceId | Yes | 워크스페이스 ID
+id | Yes | 리소스 ID
+name | Yes | 리소스 이름
+version | Yes | 리소스 버전 문자열
+description | Yes | 리소스 설명
+metadata.name | Yes | 메타데이터 이름
+spec.protocol | Yes | 백엔드 호출 프로토콜
+spec.proxyPath | Yes | 백엔드 프록시 경로
+spec.method | Yes | 백엔드 호출 HTTP Method
 spec.loadBalancing.targets | Yes | 백엔드 대상 서버 목록
-
-**적합한 사용 가이드**
-
-대상 | 주요 필드 | 사용 시나리오
----|---|---
-HTTP/HTTPS | protocol, upstreamTls, timeout, retry | 일반 REST 백엔드
-GRPC | protocol=GRPC, retry | gRPC 백엔드
-TCP | protocol=TCP | L4 백엔드
 
 **스키마**
 
@@ -30,26 +31,55 @@ TCP | protocol=TCP | L4 백엔드
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
-  "required": ["apiVersion", "kind", "metadata", "spec"],
+  "required": ["apiVersion", "kind", "uid", "workspaceId", "id", "name", "version", "description", "metadata", "spec"],
   "properties": {
     "apiVersion": { "type": "string", "const": "iip.gateway/v1alpha1" },
     "kind": { "type": "string", "const": "Connector" },
+    "uid": { "type": "string" },
+    "workspaceId": { "type": "string" },
+    "id": { "type": "string" },
+    "name": { "type": "string" },
+    "version": { "type": "string" },
+    "description": { "type": "string" },
     "metadata": {
       "type": "object",
       "required": ["name"],
       "properties": {
-        "name": { "type": "string" },
-        "labels": { "type": "object" }
+        "name": { "type": "string" }
       }
     },
     "spec": {
       "type": "object",
-      "required": ["loadBalancing"],
+      "required": ["protocol", "proxyPath", "method", "loadBalancing"],
       "properties": {
         "protocol": {
           "type": "string",
           "enum": ["HTTP", "HTTPS", "GRPC", "TCP"],
           "default": "HTTP"
+        },
+        "proxyPath": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string"
+        },
+        "requestMsgTpl": {
+          "type": "object",
+          "required": ["uid", "id", "name"],
+          "properties": {
+            "uid": { "type": "string" },
+            "id": { "type": "string" },
+            "name": { "type": "string" }
+          }
+        },
+        "responseMsgTpl": {
+          "type": "object",
+          "required": ["uid", "id", "name"],
+          "properties": {
+            "uid": { "type": "string" },
+            "id": { "type": "string" },
+            "name": { "type": "string" }
+          }
         },
         "upstreamTls": {
           "type": "object",
@@ -156,15 +186,29 @@ TCP | protocol=TCP | L4 백엔드
 {
   "apiVersion": "iip.gateway/v1alpha1",
   "kind": "Connector",
+  "uid": "UUID",
+  "workspaceId": "dev",
+  "id": "products-backend-cluster",
+  "name": "products-backend-cluster",
+  "version": "v1",
+  "description": "products backend connector",
   "metadata": {
-    "name": "products-backend-cluster",
-    "labels": {
-      "app": "product-service",
-      "env": "prod"
-    }
+    "name": "products-backend-cluster"
   },
   "spec": {
     "protocol": "HTTPS",
+    "proxyPath": "/products",
+    "method": "GET",
+    "requestMsgTpl": {
+      "uid": "request-template-uuid",
+      "id": "request-template-id",
+      "name": "request-template-name"
+    },
+    "responseMsgTpl": {
+      "uid": "response-template-uuid",
+      "id": "response-template-id",
+      "name": "response-template-name"
+    },
     "upstreamTls": {
       "enabled": true,
       "sni": "products.internal.svc",

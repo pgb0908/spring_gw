@@ -57,7 +57,7 @@ class ConnectorCallExecutorTest {
     void 백엔드_200_응답시_CONNECTOR_RESPONSE_status_RUNNING을_반환한다() {
         FlowEnvelope request = buildRequest(null);
 
-        FlowEnvelope response = executor.execute(backendUrl(), request)
+        FlowEnvelope response = executor.execute(backendUrl(), "", "POST", request)
                 .block(Duration.ofSeconds(3));
 
         assertThat(response.getStatus()).isEqualTo("RUNNING");
@@ -68,7 +68,7 @@ class ConnectorCallExecutorTest {
     void 백엔드_응답_본문이_base64로_인코딩되어_payload에_담긴다() {
         FlowEnvelope request = buildRequest(null);
 
-        FlowEnvelope response = executor.execute(backendUrl(), request)
+        FlowEnvelope response = executor.execute(backendUrl(), "", "POST", request)
                 .block(Duration.ofSeconds(3));
 
         String decoded = new String(Base64.getDecoder().decode(response.getPayload()));
@@ -80,7 +80,7 @@ class ConnectorCallExecutorTest {
         FlowEnvelope request = buildRequest(null);
         request.setHeader(java.util.Map.of("X-Custom", "my-value"));
 
-        executor.execute(backendUrl(), request).block(Duration.ofSeconds(3));
+        executor.execute(backendUrl(), "", "POST", request).block(Duration.ofSeconds(3));
 
         assertThat(capturedCustomHeader.get()).isEqualTo("my-value");
     }
@@ -89,7 +89,7 @@ class ConnectorCallExecutorTest {
     void 백엔드_응답_헤더가_FlowEnvelope_header_맵에_포함된다() {
         FlowEnvelope request = buildRequest(null);
 
-        FlowEnvelope response = executor.execute(backendUrl(), request)
+        FlowEnvelope response = executor.execute(backendUrl(), "", "POST", request)
                 .block(Duration.ofSeconds(3));
 
         assertThat(response.getHeader()).containsKey("X-Backend-Result");
@@ -100,7 +100,7 @@ class ConnectorCallExecutorTest {
         mockBackendStatus = 500;
         FlowEnvelope request = buildRequest(null);
 
-        FlowEnvelope response = executor.execute(backendUrl(), request)
+        FlowEnvelope response = executor.execute(backendUrl(), "", "POST", request)
                 .block(Duration.ofSeconds(3));
 
         assertThat(response.getStatus()).isEqualTo("ERROR");
@@ -112,7 +112,7 @@ class ConnectorCallExecutorTest {
         String originalBody = "{\"order\":\"test\"}";
         FlowEnvelope request = buildRequest(Base64.getEncoder().encodeToString(originalBody.getBytes()));
 
-        executor.execute(backendUrl(), request).block(Duration.ofSeconds(3));
+        executor.execute(backendUrl(), "", "POST", request).block(Duration.ofSeconds(3));
 
         assertThat(capturedBody.get()).isNotNull();
         assertThat(new String(capturedBody.get())).isEqualTo(originalBody);
@@ -122,7 +122,7 @@ class ConnectorCallExecutorTest {
     void guid가_응답에_유지된다() {
         FlowEnvelope request = buildRequest(null);
 
-        FlowEnvelope response = executor.execute(backendUrl(), request)
+        FlowEnvelope response = executor.execute(backendUrl(), "", "POST", request)
                 .block(Duration.ofSeconds(3));
 
         assertThat(response.getGuid()).isEqualTo("test-guid");

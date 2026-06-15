@@ -70,8 +70,8 @@ public class StandaloneConfigLoader {
                     case "Listener"  -> listeners.add(objectMapper.readValue(file, ListenerResource.class));
                     case "Gateway"   -> gateway[0] = objectMapper.readValue(file, GatewayResource.class);
                     case "Router"    -> routers.add(objectMapper.readValue(file, RouterResource.class));
-                    case "Connector" -> { var c = objectMapper.readValue(file, ConnectorResource.class); connectors.put(c.getMetadata().getName(), c); }
-                    case "Flow"      -> { var f = objectMapper.readValue(file, FlowResource.class); flows.put(f.getMetadata().getName(), f); }
+                    case "Connector" -> { var c = objectMapper.readValue(file, ConnectorResource.class); connectors.put(c.getId(), c); }
+                    case "Flow"      -> { var f = objectMapper.readValue(file, FlowResource.class); flows.put(f.getId(), f); }
                     case "Policy"    -> {
                         String type = tree.path("type").asText(null);
                         if (type == null || type.isBlank()) {

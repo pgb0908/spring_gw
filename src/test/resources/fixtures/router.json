@@ -1,6 +1,12 @@
 {
   "apiVersion": "iip.gateway/v1alpha1",
   "kind": "Router",
+  "uid": "api-router-uid",
+  "workspaceId": "dev",
+  "id": "api-router",
+  "name": "api-router",
+  "version": "v1",
+  "description": "api router",
   "metadata": { "name": "api-router" },
   "spec": {
     "rule": {
@@ -8,8 +14,8 @@
       "match": { "path": "/api/orders/**", "methods": "GET" }
     },
     "destinations": [
-      { "destinationRef": { "kind": "Connector", "name": "order-connector" }, "weight": 90 },
-      { "destinationRef": { "kind": "Connector", "name": "order-connector-v2" }, "weight": 10 }
+      { "destinationRef": { "kind": "Connector", "uid": "order-connector-uid", "id": "order-connector", "name": "order-connector" }, "weight": 90 },
+      { "destinationRef": { "kind": "Connector", "uid": "order-connector-v2-uid", "id": "order-connector-v2", "name": "order-connector-v2" }, "weight": 10 }
     ]
   }
 }

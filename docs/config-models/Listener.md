@@ -2,24 +2,23 @@
 
 **개요**
 
-게이트웨이가 리스닝할 포트와 프로토콜을 정의합니다.
+`Listener`는 게이트웨이가 외부 요청을 수신할 포트와 프로토콜, TLS 설정을 정의하는 리소스입니다.
 
 **필수 필드**
 
 필드명 | 필수 | 설명
 ---|---|---
-apiVersion | Yes | 리소스의 버전입니다. (예: iip.gateway/v1alpha1)
-kind | Yes | 리소스 종류입니다. (Listener)
-metadata.name | Yes | 리스너의 고유 식별자입니다.
+apiVersion | Yes | 리소스 버전
+kind | Yes | 리소스 종류
+uid | Yes | 리소스 UID
+workspaceId | Yes | 워크스페이스 ID
+id | Yes | 리소스 ID
+name | Yes | 리소스 이름
+version | Yes | 리소스 버전 문자열
+description | Yes | 리소스 설명
+metadata.name | Yes | 메타데이터 이름
 spec.protocol | Yes | 통신 프로토콜 (HTTP, HTTPS, TCP, GRPC)
 spec.port | Yes | 바인딩할 포트 번호
-
-**타입별 가이드**
-
-타입 | 주요 필드 | 사용 시나리오
----|---|---
-HTTP/HTTPS | tls, connection, allowedHostnames | 일반적인 HTTP(S) 게이트웨이 구성
-TCP/GRPC | connection | L4/TCP 혹은 GRPC 리스닝
 
 **스키마**
 
@@ -27,16 +26,21 @@ TCP/GRPC | connection | L4/TCP 혹은 GRPC 리스닝
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
-  "required": ["apiVersion", "kind", "metadata", "spec"],
+  "required": ["apiVersion", "kind", "uid", "workspaceId", "id", "name", "version", "description", "metadata", "spec"],
   "properties": {
     "apiVersion": { "type": "string", "const": "iip.gateway/v1alpha1" },
     "kind": { "type": "string", "const": "Listener" },
+    "uid": { "type": "string" },
+    "workspaceId": { "type": "string" },
+    "id": { "type": "string" },
+    "name": { "type": "string" },
+    "version": { "type": "string" },
+    "description": { "type": "string" },
     "metadata": {
       "type": "object",
       "required": ["name"],
       "properties": {
-        "name": { "type": "string" },
-        "labels": { "type": "object" }
+        "name": { "type": "string" }
       }
     },
     "spec": {
@@ -65,7 +69,7 @@ TCP/GRPC | connection | L4/TCP 혹은 GRPC 리스닝
           "type": "object",
           "properties": {
             "mode": { "type": "string", "enum": ["TERMINATE", "PASSTHROUGH"] },
-            "minVersion": { "type": "string", "enum": ["1.0", "1.1", "1.2", "1.3"] },
+            "minVersion": { "type": "string", "enum": ["1.2", "1.3"] },
             "certificates": {
               "type": "array",
               "items": {
@@ -99,11 +103,14 @@ TCP/GRPC | connection | L4/TCP 혹은 GRPC 리스닝
 {
   "apiVersion": "iip.gateway/v1alpha1",
   "kind": "Listener",
+  "uid": "UUID",
+  "workspaceId": "dev",
+  "id": "ecommerce-https-listener",
+  "name": "ecommerce-https-listener",
+  "version": "v1",
+  "description": "ecommerce https listener",
   "metadata": {
-    "name": "ecommerce-https-listener",
-    "labels": {
-      "env": "production"
-    }
+    "name": "ecommerce-https-listener"
   },
   "spec": {
     "protocol": "HTTPS",

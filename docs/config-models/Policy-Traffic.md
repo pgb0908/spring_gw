@@ -31,7 +31,7 @@ SLA 차등 | slaTiers | 등급별 제한 분리
   "type": "object",
   "required": ["apiVersion", "kind", "metadata", "spec"],
   "properties": {
-    "apiVersion": { "type": "string" },
+    "apiVersion": { "type": "string", "const": "iip.gateway/v1alpha1" },
     "kind": { "type": "string", "const": "Policy" },
     "metadata": {
       "type": "object",
@@ -48,7 +48,7 @@ SLA 차등 | slaTiers | 등급별 제한 분리
           "type": "object",
           "required": ["name"],
           "properties": {
-            "kind": { "type": "string", "enum": ["Listener", "Router", "Service"], "default": "Router" },
+            "kind": { "type": "string", "const": "Router" },
             "name": { "type": "string" }
           }
         },
@@ -76,12 +76,19 @@ SLA 차등 | slaTiers | 등급별 제한 분리
         },
         "config": {
           "type": "object",
+          "minProperties": 1,
           "properties": {
             "strategy": {
               "type": "object",
               "properties": {
                 "type": { "type": "string", "enum": ["client_ip", "header", "jwt_claim"], "default": "client_ip" },
                 "key": { "type": "string" }
+              },
+              "if": {
+                "properties": { "type": { "enum": ["header", "jwt_claim"] } }
+              },
+              "then": {
+                "required": ["key"]
               }
             },
             "rateLimit": { "$ref": "#/definitions/limitConfig" },
@@ -132,7 +139,7 @@ SLA 차등 | slaTiers | 등급별 제한 분리
           "required": ["limit", "window"],
           "properties": {
             "limit": { "type": "integer", "minimum": 1 },
-            "window": { "type": "string", "pattern": "^[0-9]+(s|m|h|d)$" }
+            "window": { "type": "string", "pattern": "^[0-9]+(ms|s|m|h|d)$" }
           }
         },
         "burst": {

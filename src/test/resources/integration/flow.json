@@ -1,6 +1,12 @@
 {
   "apiVersion": "iip.gateway/v1alpha1",
   "kind": "Flow",
+  "uid": "test-flow-uid",
+  "workspaceId": "test",
+  "id": "test-flow",
+  "name": "test-flow",
+  "version": "v1",
+  "description": "test flow",
   "metadata": { "name": "test-flow" },
   "spec": {
     "protocol": "HTTP",

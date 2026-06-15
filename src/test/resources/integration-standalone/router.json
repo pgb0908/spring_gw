@@ -2,7 +2,7 @@
   "apiVersion": "iip.gateway/v1alpha1",
   "kind": "Router",
   "uid": "example-router-uid",
-  "workspaceId": "dev",
+  "workspaceId": "test",
   "id": "example-router",
   "name": "example-router",
   "version": "v1",
@@ -11,10 +11,7 @@
   "spec": {
     "rule": {
       "protocol": "HTTP",
-      "match": {
-        "path": "/api/example/**",
-        "methods": "GET"
-      }
+      "match": { "path": "/api/example/**", "methods": "GET" }
     },
     "destinations": [
       {

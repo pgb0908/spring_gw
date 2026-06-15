@@ -12,6 +12,12 @@ import java.util.List;
 public class ConnectorResource {
     private String apiVersion = "";
     private String kind = "Connector";
+    private String uid = "";
+    private String workspaceId = "";
+    private String id = "";
+    private String name = "";
+    private String version = "";
+    private String description = "";
     private ResourceMetadata metadata = new ResourceMetadata();
     private Spec spec = new Spec();
 
@@ -20,6 +26,10 @@ public class ConnectorResource {
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class Spec {
         private String protocol = "HTTP";
+        private String proxyPath = "";
+        private String method = "POST";
+        private MessageTemplate requestMsgTpl;
+        private MessageTemplate responseMsgTpl;
         private UpstreamTls upstreamTls;
         private String maxRequestBodySize;
         private String maxResponseBodySize;
@@ -47,6 +57,15 @@ public class ConnectorResource {
     public static class LoadBalancing {
         private LbAlgorithm algorithm = LbAlgorithm.ROUND_ROBIN;
         private List<Target> targets = List.of();
+    }
+
+    @Data
+    @NoArgsConstructor
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class MessageTemplate {
+        private String uid = "";
+        private String id = "";
+        private String name = "";
     }
 
     public enum LbAlgorithm { ROUND_ROBIN, LEAST_CONN, IP_HASH, RANDOM }

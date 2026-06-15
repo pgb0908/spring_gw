@@ -1,9 +1,17 @@
 {
   "apiVersion": "iip.gateway/v1alpha1",
   "kind": "Connector",
+  "uid": "order-connector-uid",
+  "workspaceId": "dev",
+  "id": "order-connector",
+  "name": "order-connector",
+  "version": "v1",
+  "description": "order connector",
   "metadata": { "name": "order-connector" },
   "spec": {
     "protocol": "HTTP",
+    "proxyPath": "/orders",
+    "method": "POST",
     "loadBalancing": {
       "algorithm": "ROUND_ROBIN",
       "targets": [

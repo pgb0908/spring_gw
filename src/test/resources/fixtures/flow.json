@@ -1,10 +1,15 @@
 {
   "apiVersion": "iip.gateway/v1alpha1",
   "kind": "Flow",
+  "uid": "integration-flow-uid",
+  "workspaceId": "dev",
+  "id": "integration-flow",
+  "name": "integration-flow",
+  "version": "v1",
+  "description": "integration flow",
   "metadata": { "name": "integration-flow" },
   "spec": {
-    "protocol": "gRPC",
-    "upstreamTls": { "enabled": false },
+    "protocol": "HTTP",
     "loadBalancing": {
       "algorithm": "ROUND_ROBIN",
       "targets": [

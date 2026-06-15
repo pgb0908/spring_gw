@@ -12,6 +12,12 @@ import java.util.List;
 public class RouterResource {
     private String apiVersion = "";
     private String kind = "Router";
+    private String uid = "";
+    private String workspaceId = "";
+    private String id = "";
+    private String name = "";
+    private String version = "";
+    private String description = "";
     private ResourceMetadata metadata = new ResourceMetadata();
     private Spec spec = new Spec();
 
@@ -52,6 +58,8 @@ public class RouterResource {
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class DestinationRef {
         private DestinationKind kind = DestinationKind.Connector;
+        private String uid = "";
+        private String id = "";
         private String name = "";
     }
 

@@ -1,6 +1,12 @@
 {
   "apiVersion": "iip.gateway/v1alpha1",
   "kind": "Listener",
+  "uid": "egress-listener-uid",
+  "workspaceId": "dev",
+  "id": "egress-listener",
+  "name": "egress-listener",
+  "version": "v1",
+  "description": "egress listener",
   "metadata": { "name": "egress-listener" },
   "spec": {
     "protocol": "HTTP",

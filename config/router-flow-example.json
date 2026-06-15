@@ -1,6 +1,12 @@
 {
   "apiVersion": "iip.gateway/v1alpha1",
   "kind": "Router",
+  "uid": "flow-router-uid",
+  "workspaceId": "dev",
+  "id": "flow-router",
+  "name": "flow-router",
+  "version": "v1",
+  "description": "flow router",
   "metadata": { "name": "flow-router" },
   "spec": {
     "rule": {
@@ -14,6 +20,8 @@
       {
         "destinationRef": {
           "kind": "Flow",
+          "uid": "example-flow-uid",
+          "id": "example-flow",
           "name": "example-flow"
         }
       }

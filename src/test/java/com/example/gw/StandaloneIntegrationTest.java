@@ -10,7 +10,7 @@ import reactor.test.StepVerifier;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @TestPropertySource(properties = {
         "gateway.mode=standalone",
-        "gateway.standalone.config-dir=./config"
+        "gateway.standalone.config-dir=src/test/resources/integration-standalone"
 })
 class StandaloneIntegrationTest {
 

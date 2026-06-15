@@ -172,7 +172,7 @@ class RouteTranslatorTest {
         return LoadedConfig.builder()
                 .listeners(List.of()).gateway(null)
                 .routers(List.of(router))
-                .connectors(Map.of(connector.getMetadata().getName(), connector))
+                .connectors(Map.of(connector.getId(), connector))
                 .flows(Map.of())
                 .build();
     }
@@ -182,26 +182,30 @@ class RouteTranslatorTest {
                 .listeners(List.of()).gateway(null)
                 .routers(List.of(router))
                 .connectors(Map.of())
-                .flows(Map.of(flow.getMetadata().getName(), flow))
+                .flows(Map.of(flow.getId(), flow))
                 .build();
     }
 
-    private RouterResource router(String name, String path, String method, RouterResource.DestinationKind kind, String destName) {
+    private RouterResource router(String name, String path, String method, RouterResource.DestinationKind kind, String destId) {
         var router = new RouterResource();
         router.getMetadata().setName(name);
         router.getSpec().getRule().getMatch().setPath(path);
         router.getSpec().getRule().getMatch().setMethods(method);
         var dest = new RouterResource.Destination();
         dest.getDestinationRef().setKind(kind);
-        dest.getDestinationRef().setName(destName);
+        dest.getDestinationRef().setId(destId);
+        dest.getDestinationRef().setName(destId);
         router.getSpec().setDestinations(List.of(dest));
         return router;
     }
 
-    private ConnectorResource connector(String name, String protocol, String host, int port) {
+    private ConnectorResource connector(String id, String protocol, String host, int port) {
         var c = new ConnectorResource();
-        c.getMetadata().setName(name);
+        c.setId(id);
+        c.getMetadata().setName(id);
         c.getSpec().setProtocol(protocol);
+        c.getSpec().setProxyPath("/");
+        c.getSpec().setMethod("POST");
         var target = new ConnectorResource.Target();
         target.setHost(host);
         target.setPort(port);
@@ -209,9 +213,10 @@ class RouteTranslatorTest {
         return c;
     }
 
-    private FlowResource flow(String name, String host, int port, String flowId) {
+    private FlowResource flow(String id, String host, int port, String flowId) {
         var f = new FlowResource();
-        f.getMetadata().setName(name);
+        f.setId(id);
+        f.getMetadata().setName(id);
         var target = new FlowResource.Target();
         target.setHost(host);
         target.setPort(port);

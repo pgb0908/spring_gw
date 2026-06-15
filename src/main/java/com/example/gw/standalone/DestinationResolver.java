@@ -16,8 +16,8 @@ public class DestinationResolver {
 
     public ResolvedDestination resolve(RouterResource.DestinationRef ref, LoadedConfig config) {
         return switch (ref.getKind()) {
-            case Connector -> resolveConnector(ref.getName(), config);
-            case Flow      -> resolveFlow(ref.getName(), config);
+            case Connector -> resolveConnector(ref.getId(), config);
+            case Flow      -> resolveFlow(ref.getId(), config);
         };
     }
 

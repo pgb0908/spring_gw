@@ -1,21 +1,21 @@
 {
   "apiVersion": "iip.gateway/v1alpha1",
   "kind": "Connector",
-  "uid": "mock-backend-uid",
+  "uid": "example-connector-uid",
   "workspaceId": "test",
-  "id": "mock-backend",
-  "name": "mock-backend",
+  "id": "example-connector",
+  "name": "example-connector",
   "version": "v1",
-  "description": "mock backend connector",
-  "metadata": { "name": "mock-backend" },
+  "description": "example connector",
+  "metadata": { "name": "example-connector" },
   "spec": {
     "protocol": "HTTP",
     "proxyPath": "/",
-    "method": "POST",
+    "method": "GET",
     "loadBalancing": {
       "algorithm": "ROUND_ROBIN",
       "targets": [
-        { "host": "localhost", "port": 19996 }
+        { "host": "localhost", "port": 19999 }
       ]
     }
   }

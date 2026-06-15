@@ -1,9 +1,17 @@
 {
   "apiVersion": "iip.gateway/v1alpha1",
   "kind": "Connector",
+  "uid": "example-connector-uid",
+  "workspaceId": "dev",
+  "id": "example-connector",
+  "name": "example-connector",
+  "version": "v1",
+  "description": "example connector",
   "metadata": { "name": "example-connector" },
   "spec": {
     "protocol": "HTTP",
+    "proxyPath": "/",
+    "method": "POST",
     "loadBalancing": {
       "algorithm": "ROUND_ROBIN",
       "targets": [

@@ -13,6 +13,12 @@ import java.util.List;
 public class FlowResource {
     private String apiVersion = "";
     private String kind = "Flow";
+    private String uid = "";
+    private String workspaceId = "";
+    private String id = "";
+    private String name = "";
+    private String version = "";
+    private String description = "";
     private ResourceMetadata metadata = new ResourceMetadata();
     private Spec spec = new Spec();
 

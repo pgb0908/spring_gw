@@ -67,14 +67,18 @@ public class EgressConnectorHandler {
     }
 
     private void processAsync(FlowEnvelope req) {
-        String backendUrl = resolveBackendUrl(req.getConnectorId());
-        if (backendUrl == null) {
-            log.error("백엔드 URL 없음 — connector_id={}, guid={}", req.getConnectorId(), req.getGuid());
+        ConnectorResource connector = resolveConnector(req.getConnectorId());
+        if (connector == null) {
+            log.error("Connector 없음 — connector_id={}, guid={}", req.getConnectorId(), req.getGuid());
             return;
         }
 
+        String backendBaseUrl = buildBaseUrl(connector);
+        String proxyPath = connector.getSpec().getProxyPath();
+        String method = connector.getSpec().getMethod();
+
         FlowEnvelope enriched = enrichWithGatewayId(req);
-        executor.execute(backendUrl, enriched)
+        executor.execute(backendBaseUrl, proxyPath, method, enriched)
                 .flatMap(coreCallbackClient::postResponse)
                 .subscribeOn(Schedulers.boundedElastic())
                 .subscribe(
@@ -97,18 +101,16 @@ public class EgressConnectorHandler {
         return ack;
     }
 
-    private String resolveBackendUrl(String connectorId) {
-        ConnectorResource connector;
+    private ConnectorResource resolveConnector(String connectorId) {
         if (connectorId != null && !connectorId.isBlank()) {
-            connector = configLoader.getConfig().getConnectors().get(connectorId);
-        } else {
-            connector = configLoader.getConfig().getConnectors().values().stream().findFirst().orElse(null);
+            return configLoader.getConfig().getConnectors().get(connectorId);
         }
-        if (connector == null) return null;
+        return configLoader.getConfig().getConnectors().values().stream().findFirst().orElse(null);
+    }
 
+    private String buildBaseUrl(ConnectorResource connector) {
         List<ConnectorResource.Target> targets = connector.getSpec().getLoadBalancing().getTargets();
         if (targets.isEmpty()) return null;
-
         ConnectorResource.Target target = targets.get(0);
         String scheme = "HTTPS".equalsIgnoreCase(connector.getSpec().getProtocol()) ? "https" : "http";
         return scheme + "://" + target.getHost() + ":" + target.getPort();

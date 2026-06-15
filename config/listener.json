@@ -1,6 +1,12 @@
 {
   "apiVersion": "iip.gateway/v1alpha1",
   "kind": "Listener",
+  "uid": "main-listener-uid",
+  "workspaceId": "dev",
+  "id": "main-listener",
+  "name": "main-listener",
+  "version": "v1",
+  "description": "main listener",
   "metadata": { "name": "main-listener" },
   "spec": {
     "protocol": "HTTP",

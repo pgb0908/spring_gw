@@ -1,9 +1,15 @@
 {
   "apiVersion": "iip.gateway/v1alpha1",
   "kind": "Flow",
+  "uid": "test-core-flow-uid",
+  "workspaceId": "test",
+  "id": "test-core-flow",
+  "name": "test-core-flow",
+  "version": "v1",
+  "description": "test core flow",
   "metadata": { "name": "test-core-flow" },
   "spec": {
-    "protocol": "gRPC",
+    "protocol": "HTTP",
     "loadBalancing": {
       "algorithm": "ROUND_ROBIN",
       "targets": [

@@ -12,6 +12,12 @@ import java.util.List;
 public class ListenerResource {
     private String apiVersion = "";
     private String kind = "Listener";
+    private String uid = "";
+    private String workspaceId = "";
+    private String id = "";
+    private String name = "";
+    private String version = "";
+    private String description = "";
     private ResourceMetadata metadata = new ResourceMetadata();
     private Spec spec = new Spec();
 
@@ -28,7 +34,7 @@ public class ListenerResource {
         private Connection connection;
     }
 
-    public enum Protocol { HTTP, HTTPS, TCP }
+    public enum Protocol { HTTP, HTTPS, TCP, GRPC }
 
     public enum Role { INGRESS, EGRESS }
 

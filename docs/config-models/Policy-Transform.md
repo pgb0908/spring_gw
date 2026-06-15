@@ -34,7 +34,7 @@ spec.config | Yes | 변환 설정
   "type": "object",
   "required": ["apiVersion", "kind", "metadata", "spec"],
   "properties": {
-    "apiVersion": { "type": "string" },
+    "apiVersion": { "type": "string", "const": "iip.gateway/v1alpha1" },
     "kind": { "type": "string", "const": "Policy" },
     "metadata": {
       "type": "object",
@@ -51,7 +51,7 @@ spec.config | Yes | 변환 설정
           "type": "object",
           "required": ["name"],
           "properties": {
-            "kind": { "type": "string", "enum": ["Router", "Service"], "default": "Router" },
+            "kind": { "type": "string", "const": "Router" },
             "name": { "type": "string" }
           }
         },
@@ -80,6 +80,7 @@ spec.config | Yes | 변환 설정
         },
         "config": {
           "type": "object",
+          "minProperties": 1,
           "properties": {
             "headerControl": {
               "type": "object",

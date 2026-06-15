@@ -6,6 +6,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
+import org.springframework.http.HttpMethod;
+
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
@@ -20,11 +22,13 @@ public class ConnectorCallExecutor {
      * 백엔드 URL로 CONNECTOR_REQUEST를 전달하고 CONNECTOR_RESPONSE FlowEnvelope를 반환한다.
      * payload는 base64 디코딩하여 HTTP 본문으로 전송하고, 응답 본문은 다시 base64로 인코딩한다.
      */
-    public Mono<FlowEnvelope> execute(String backendUrl, FlowEnvelope request) {
+    public Mono<FlowEnvelope> execute(String backendBaseUrl, String proxyPath, String method, FlowEnvelope request) {
+        String url = backendBaseUrl + (proxyPath != null && !proxyPath.isBlank() ? proxyPath : "");
+        HttpMethod httpMethod = parseMethod(method);
         byte[] payloadBytes = decodePayload(request.getPayload());
 
-        return webClient.post()
-                .uri(backendUrl)
+        return webClient.method(httpMethod)
+                .uri(url)
                 .headers(h -> {
                     if (request.getHeader() != null) request.getHeader().forEach(h::set);
                 })
@@ -32,7 +36,17 @@ public class ConnectorCallExecutor {
                 .exchangeToMono(response -> response.toEntity(byte[].class))
                 .map(entity -> buildResponse(request, entity.getStatusCode().value(),
                         entity.getBody(), entity.getHeaders().toSingleValueMap()))
-                .doOnError(e -> log.error("백엔드 호출 실패 — url={}, guid={}: {}", backendUrl, request.getGuid(), e.getMessage()));
+                .doOnError(e -> log.error("백엔드 호출 실패 — url={}, guid={}: {}", url, request.getGuid(), e.getMessage()));
+    }
+
+    private HttpMethod parseMethod(String method) {
+        if (method == null || method.isBlank()) return HttpMethod.POST;
+        try {
+            return HttpMethod.valueOf(method.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            log.warn("알 수 없는 HTTP method '{}' — POST로 폴백", method);
+            return HttpMethod.POST;
+        }
     }
 
     private FlowEnvelope buildResponse(FlowEnvelope req, int httpStatus,

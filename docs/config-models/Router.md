@@ -11,12 +11,22 @@
 
 필드명 | 필수 | 설명
 ---|---|---
-apiVersion | Yes | `iip.gateway/v1alpha1`
-kind | Yes | `Router`
-metadata.name | Yes | Router 리소스 이름
+apiVersion | Yes | 리소스 버전
+kind | Yes | 리소스 종류
+uid | Yes | 리소스 UID
+workspaceId | Yes | 워크스페이스 ID
+id | Yes | 리소스 ID
+name | Yes | 리소스 이름
+version | Yes | 리소스 버전 문자열
+description | Yes | 리소스 설명
+metadata.name | Yes | 메타데이터 이름
 spec.rule.protocol | Yes | 현재 예시는 `HTTP`
 spec.rule.match.path | Yes | 매칭 경로
 spec.rule.match.methods | Yes | HTTP Method (`GET`, `POST` 등)
+spec.destinations[].destinationRef.kind | Yes | 목적지 리소스 종류
+spec.destinations[].destinationRef.uid | Yes | 목적지 리소스 UID
+spec.destinations[].destinationRef.id | Yes | 목적지 리소스 ID
+spec.destinations[].destinationRef.name | Yes | 목적지 리소스 이름
 spec.destinations | Yes | 목적지 목록
 
 **스키마 (예시 기반)**
@@ -25,10 +35,16 @@ spec.destinations | Yes | 목적지 목록
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
-  "required": ["apiVersion", "kind", "metadata", "spec"],
+  "required": ["apiVersion", "kind", "uid", "workspaceId", "id", "name", "version", "description", "metadata", "spec"],
   "properties": {
     "apiVersion": { "type": "string", "const": "iip.gateway/v1alpha1" },
     "kind": { "type": "string", "const": "Router" },
+    "uid": { "type": "string" },
+    "workspaceId": { "type": "string" },
+    "id": { "type": "string" },
+    "name": { "type": "string" },
+    "version": { "type": "string" },
+    "description": { "type": "string" },
     "metadata": {
       "type": "object",
       "required": ["name"],
@@ -67,9 +83,11 @@ spec.destinations | Yes | 목적지 목록
             "properties": {
               "destinationRef": {
                 "type": "object",
-                "required": ["kind", "name"],
+                "required": ["kind", "uid", "id", "name"],
                 "properties": {
                   "kind": { "type": "string", "enum": ["Connector", "Flow"] },
+                  "uid": { "type": "string" },
+                  "id": { "type": "string" },
                   "name": { "type": "string" }
                 }
               },
@@ -89,6 +107,12 @@ spec.destinations | Yes | 목적지 목록
 {
   "apiVersion": "iip.gateway/v1alpha1",
   "kind": "Router",
+  "uid": "UUID",
+  "workspaceId": "dev",
+  "id": "testapi1-router",
+  "name": "testapi1-router",
+  "version": "v1",
+  "description": "testapi1 router",
   "metadata": {
     "name": "testapi1-router"
   },
@@ -104,14 +128,18 @@ spec.destinations | Yes | 목적지 목록
       {
         "destinationRef": {
           "kind": "Connector",
-          "name": "testapi1-connector1"
+          "uid": "testapi1-connector1",
+          "id": "testapi1-connector1-id",
+          "name": "testapi1-connector1-name"
         },
         "weight": 90
       },
       {
         "destinationRef": {
           "kind": "Connector",
-          "name": "testapi1-connector2"
+          "uid": "testapi1-connector2",
+          "id": "testapi1-connector2-id",
+          "name": "testapi1-connector2-name"
         },
         "weight": 10
       }
@@ -126,6 +154,12 @@ spec.destinations | Yes | 목적지 목록
 {
   "apiVersion": "iip.gateway/v1alpha1",
   "kind": "Router",
+  "uid": "UUID",
+  "workspaceId": "dev",
+  "id": "testapi2-router",
+  "name": "testapi2-router",
+  "version": "v1",
+  "description": "testapi2 router",
   "metadata": {
     "name": "testapi2-router"
   },
@@ -141,7 +175,9 @@ spec.destinations | Yes | 목적지 목록
       {
         "destinationRef": {
           "kind": "Flow",
-          "name": "testapi2-flow1"
+          "uid": "testapi2-flow1",
+          "id": "testapi2-flow1-id",
+          "name": "testapi2-flow1-name"
         }
       }
     ]

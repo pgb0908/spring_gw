@@ -31,7 +31,7 @@ Redis/Memcached | strategy, storageRef | 분산 캐시
   "type": "object",
   "required": ["apiVersion", "kind", "metadata", "spec"],
   "properties": {
-    "apiVersion": { "type": "string" },
+    "apiVersion": { "type": "string", "const": "iip.gateway/v1alpha1" },
     "kind": { "type": "string", "const": "Policy" },
     "metadata": {
       "type": "object",
@@ -48,7 +48,7 @@ Redis/Memcached | strategy, storageRef | 분산 캐시
           "type": "object",
           "required": ["name"],
           "properties": {
-            "kind": { "type": "string", "enum": ["Router", "Service"], "default": "Router" },
+            "kind": { "type": "string", "const": "Router" },
             "name": { "type": "string" }
           }
         },
@@ -78,10 +78,16 @@ Redis/Memcached | strategy, storageRef | 분산 캐시
         "config": {
           "type": "object",
           "required": ["ttl", "strategy"],
+          "if": {
+            "properties": { "strategy": { "enum": ["REDIS", "MEMCACHED"] } }
+          },
+          "then": {
+            "required": ["ttl", "strategy", "storageRef"]
+          },
           "properties": {
             "ttl": {
               "type": "integer",
-              "minimum": 0,
+              "minimum": 1,
               "description": "Default TTL in seconds"
             },
             "strategy": {
@@ -91,11 +97,11 @@ Redis/Memcached | strategy, storageRef | 분산 캐시
             },
             "storageRef": {
               "type": "object",
+              "required": ["name"],
               "properties": {
                 "name": { "type": "string" },
                 "namespace": { "type": "string" }
-              },
-              "description": "Required if strategy is REDIS or MEMCACHED"
+              }
             },
             "keyGeneration": {
               "type": "object",

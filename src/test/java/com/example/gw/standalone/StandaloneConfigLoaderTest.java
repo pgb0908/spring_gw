@@ -27,9 +27,9 @@ class StandaloneConfigLoaderTest {
         write(dir, "router.json", """
                 {"apiVersion":"iip.gateway/v1alpha1","kind":"Router","metadata":{"name":"r1"},"spec":{"rule":{"protocol":"HTTP","match":{"path":"/api/**","methods":"GET"}},"destinations":[{"destinationRef":{"kind":"Connector","name":"c1"}}]}}""");
         write(dir, "connector.json", """
-                {"apiVersion":"iip.gateway/v1alpha1","kind":"Connector","metadata":{"name":"c1"},"spec":{"loadBalancing":{"targets":[{"host":"localhost","port":8081}]}}}""");
+                {"apiVersion":"iip.gateway/v1alpha1","kind":"Connector","id":"c1","metadata":{"name":"c1"},"spec":{"protocol":"HTTP","proxyPath":"/","method":"POST","loadBalancing":{"targets":[{"host":"localhost","port":8081}]}}}""");
         write(dir, "flow.json", """
-                {"apiVersion":"iip.gateway/v1alpha1","kind":"Flow","metadata":{"name":"f1"},"spec":{"loadBalancing":{"targets":[{"host":"localhost","port":9090,"flow-id":"abc"}]}}}""");
+                {"apiVersion":"iip.gateway/v1alpha1","kind":"Flow","id":"f1","metadata":{"name":"f1"},"spec":{"loadBalancing":{"targets":[{"host":"localhost","port":9090,"flow-id":"abc"}]}}}""");
 
         var config = loader(dir.toString()).getConfig();
 
@@ -60,7 +60,7 @@ class StandaloneConfigLoaderTest {
         write(dir, "unknown.json", """
                 {"apiVersion":"iip.gateway/v1alpha1","kind":"Unknown","metadata":{"name":"x"},"spec":{}}""");
         write(dir, "connector.json", """
-                {"apiVersion":"iip.gateway/v1alpha1","kind":"Connector","metadata":{"name":"c1"},"spec":{"loadBalancing":{"targets":[{"host":"localhost","port":8081}]}}}""");
+                {"apiVersion":"iip.gateway/v1alpha1","kind":"Connector","id":"c1","metadata":{"name":"c1"},"spec":{"protocol":"HTTP","proxyPath":"/","method":"POST","loadBalancing":{"targets":[{"host":"localhost","port":8081}]}}}""");
 
         var config = loader(dir.toString()).getConfig();
 
@@ -73,7 +73,7 @@ class StandaloneConfigLoaderTest {
     void 깨진_JSON_파일이_있어도_나머지_파일을_로드한다(@TempDir Path dir) throws Exception {
         writeRaw(dir, "broken.json", "{ this is not valid json }}}");
         write(dir, "connector.json", """
-                {"apiVersion":"iip.gateway/v1alpha1","kind":"Connector","metadata":{"name":"c1"},"spec":{"loadBalancing":{"targets":[{"host":"localhost","port":8081}]}}}""");
+                {"apiVersion":"iip.gateway/v1alpha1","kind":"Connector","id":"c1","metadata":{"name":"c1"},"spec":{"protocol":"HTTP","proxyPath":"/","method":"POST","loadBalancing":{"targets":[{"host":"localhost","port":8081}]}}}""");
 
         var config = loader(dir.toString()).getConfig();
 
@@ -120,13 +120,13 @@ class StandaloneConfigLoaderTest {
         assertThat(config.getPolicies()).isEmpty();
     }
 
-    // ── 동작 5: Connector와 Flow를 이름으로 인덱싱한다 ───────────────────────
+    // ── 동작 5: Connector와 Flow를 id로 인덱싱한다 ──────────────────────────
     @Test
-    void Connector와_Flow를_metadata_name으로_인덱싱한다(@TempDir Path dir) throws Exception {
+    void Connector와_Flow를_id로_인덱싱한다(@TempDir Path dir) throws Exception {
         write(dir, "c1.json", """
-                {"apiVersion":"iip.gateway/v1alpha1","kind":"Connector","metadata":{"name":"backend-a"},"spec":{"loadBalancing":{"targets":[{"host":"host-a","port":8080}]}}}""");
+                {"apiVersion":"iip.gateway/v1alpha1","kind":"Connector","id":"backend-a","metadata":{"name":"backend-a"},"spec":{"protocol":"HTTP","proxyPath":"/a","method":"GET","loadBalancing":{"targets":[{"host":"host-a","port":8080}]}}}""");
         write(dir, "c2.json", """
-                {"apiVersion":"iip.gateway/v1alpha1","kind":"Connector","metadata":{"name":"backend-b"},"spec":{"loadBalancing":{"targets":[{"host":"host-b","port":8080}]}}}""");
+                {"apiVersion":"iip.gateway/v1alpha1","kind":"Connector","id":"backend-b","metadata":{"name":"backend-b"},"spec":{"protocol":"HTTP","proxyPath":"/b","method":"POST","loadBalancing":{"targets":[{"host":"host-b","port":8080}]}}}""");
 
         var config = loader(dir.toString()).getConfig();
 
