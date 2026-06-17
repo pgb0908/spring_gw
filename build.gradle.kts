@@ -1,6 +1,6 @@
 plugins {
-    id("org.springframework.boot") version "3.3.5"
-    id("io.spring.dependency-management") version "1.1.6"
+    id("org.springframework.boot") version "4.0.6"
+    id("io.spring.dependency-management") version "1.1.7"
     java
 }
 
@@ -8,7 +8,9 @@ group = "com.example"
 version = "0.0.1"
 
 java {
-    sourceCompatibility = JavaVersion.VERSION_21
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(25)
+    }
 }
 
 configurations {
@@ -19,20 +21,23 @@ configurations {
 
 repositories {
     mavenCentral()
+    maven { url = uri("https://repo.spring.io/snapshot") }
 }
 
-extra["springCloudVersion"] = "2023.0.3"
+extra["springCloudVersion"] = "2025.1.3-SNAPSHOT"
 
 dependencies {
-    implementation("org.springframework.cloud:spring-cloud-starter-gateway")
+    implementation("org.springframework.cloud:spring-cloud-starter-gateway-server-webflux")
     implementation("org.springframework.boot:spring-boot-starter-actuator")
     implementation("com.fasterxml.jackson.core:jackson-databind")
+    implementation("com.nimbusds:nimbus-jose-jwt:9.37.3")
 
+    // Lombok
     compileOnly("org.projectlombok:lombok")
     annotationProcessor("org.projectlombok:lombok")
+
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("io.projectreactor:reactor-test")
-    implementation("com.nimbusds:nimbus-jose-jwt:9.37.3")
     testCompileOnly("org.projectlombok:lombok")
     testAnnotationProcessor("org.projectlombok:lombok")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
@@ -46,6 +51,11 @@ dependencyManagement {
 
 tasks.withType<Test> {
     useJUnitPlatform()
+    jvmArgs("--enable-native-access=ALL-UNNAMED")
+}
+
+tasks.named<org.springframework.boot.gradle.tasks.run.BootRun>("bootRun") {
+    jvmArgs("--enable-native-access=ALL-UNNAMED")
 }
 
 val packageDist by tasks.registering(Copy::class) {
@@ -77,7 +87,7 @@ if [ -f "${'$'}PID_FILE" ] && kill -0 "${'$'}(cat "${'$'}PID_FILE")" 2>/dev/null
     exit 1
 fi
 
-nohup java ${'$'}{JAVA_OPTS} -jar "${'$'}JAR" "${'$'}@" > "${'$'}SCRIPT_DIR/spring-gw.log" 2>&1 &
+nohup java --enable-native-access=ALL-UNNAMED ${'$'}{JAVA_OPTS} -jar "${'$'}JAR" "${'$'}@" > "${'$'}SCRIPT_DIR/spring-gw.log" 2>&1 &
 echo ${'$'}! > "${'$'}PID_FILE"
 echo "Started (PID ${'$'}(cat "${'$'}PID_FILE"))"
 """

@@ -83,8 +83,8 @@ class ApiKeyAuthGatewayFilterTest {
 
         StepVerifier.create(filter.filter(exchange, chain)).verifyComplete();
 
-        assertThat(capturedExchange.get().getRequest().getHeaders().containsKey("X-API-Key")).isFalse();
-        assertThat(capturedExchange.get().getRequest().getHeaders().containsKey("Content-Type")).isTrue();
+        assertThat(capturedExchange.get().getRequest().getHeaders().containsHeader("X-API-Key")).isFalse();
+        assertThat(capturedExchange.get().getRequest().getHeaders().containsHeader("Content-Type")).isTrue();
     }
 
     @Test

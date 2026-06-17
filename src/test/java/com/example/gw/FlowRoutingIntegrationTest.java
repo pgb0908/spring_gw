@@ -7,8 +7,8 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.reactive.server.WebTestClient;
@@ -54,6 +54,9 @@ class FlowRoutingIntegrationTest {
     static final int MOCK_CORE_PORT = 18999;
     static final int EGRESS_PORT = 18888;
 
+    @LocalServerPort
+    int port;
+
     static final ObjectMapper MAPPER = new ObjectMapper();
 
     static final AtomicReference<FlowEnvelope> lastStartFlowEnvelope = new AtomicReference<>();
@@ -79,15 +82,18 @@ class FlowRoutingIntegrationTest {
         if (mockCore != null) mockCore.dispose();
     }
 
+    WebTestClient webTestClient;
+
     @BeforeEach
     void reset() {
         lastStartFlowEnvelope.set(null);
         lastResponseAckEnvelope.set(null);
         currentMode.set("SUCCESS_RESPONSE");
+        webTestClient = WebTestClient.bindToServer()
+                .baseUrl("http://localhost:" + port)
+                .responseTimeout(Duration.ofSeconds(10))
+                .build();
     }
-
-    @Autowired
-    WebTestClient webTestClient;
 
     // ══════════════════════════════════════════════════════════════════════
     // StartFlow FlowEnvelope 필드 전파 검증

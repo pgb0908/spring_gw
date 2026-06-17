@@ -17,6 +17,7 @@ import org.springframework.mock.web.server.MockServerWebExchange;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.Date;
 import java.util.Map;
 
@@ -64,12 +65,18 @@ class JwtValidationGatewayFilterTest {
                 MockServerHttpRequest.get("/api")
                         .header("Authorization", "Bearer " + token)
                         .build());
-        var chain = mockChain();
+
+        var capturedExchange = new AtomicReference<org.springframework.web.server.ServerWebExchange>();
+        var chain = mock(GatewayFilterChain.class);
+        when(chain.filter(any())).thenAnswer(inv -> {
+            capturedExchange.set(inv.getArgument(0));
+            return Mono.empty();
+        });
 
         StepVerifier.create(filter.filter(exchange, chain)).verifyComplete();
 
         verify(chain).filter(any());
-        assertThat(exchange.getRequest().getHeaders().getFirst("X-User-ID")).isEqualTo("user-123");
+        assertThat(capturedExchange.get().getRequest().getHeaders().getFirst("X-User-ID")).isEqualTo("user-123");
     }
 
     @Test
